@@ -1,5 +1,6 @@
-// Smoke test: serve the folder, load index.html in headless Chrome, report errors,
-// measure frame rate, and screenshot the main views into tests/out/.
+// Smoke test: serve the folder, load index.test.html (the game plus a test handle) in headless Chrome, report errors,
+// drive the game, screenshot the main views into tests/out/ and compare them with thumbnails in tests/reference/
+// (UPDATE_REFS=1 re-approves them), and repeat the key screens at phone size.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -7,7 +8,14 @@ import puppeteer from 'puppeteer-core';
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const OUT = path.join(ROOT, 'tests', 'out');
-const CHROME = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const CHROME = process.env.CHROME_PATH || [
+  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Chromium.app/Contents/MacOS/Chromium',
+  '/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/snap/bin/chromium',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+].find(p => fs.existsSync(p));
+if (!CHROME) { console.error('No Chrome or Chromium found. Set CHROME_PATH to its executable.'); process.exit(2); }
+const REF = path.join(ROOT, 'tests', 'reference'), UPDATE = process.env.UPDATE_REFS === '1';
+fs.mkdirSync(REF, { recursive: true });
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.wav': 'audio/wav', '.mp3': 'audio/mpeg' };
 
 const server = http.createServer((req, res) => {
@@ -21,7 +29,10 @@ const url = `http://localhost:${server.address().port}/index.test.html`;   // th
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
+/* steady pictures: no pencil "boil" (reduced motion) and a seeded Math.random, so the crowds start the same way each run */
+const steady = async pg => { await pg.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]); await pg.evaluateOnNewDocument(() => { let s = 20261001; Math.random = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }); };
 const page = await browser.newPage();
+await steady(page);
 await page.setViewport({ width: 1440, height: 860 });
 const errors = [];
 page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
@@ -34,12 +45,49 @@ await page.waitForFunction(() => !document.getElementById('loading'), { timeout:
 const loadMs = Date.now() - t0;
 
 const fps = () => page.evaluate(() => new Promise(r => { let n = 0; const t = performance.now(); const f = () => { n++; performance.now() - t < 2000 ? requestAnimationFrame(f) : r(n / 2); }; requestAnimationFrame(f); }));
-const shot = async name => { await new Promise(r => setTimeout(r, 1500)); await page.screenshot({ path: path.join(OUT, `${name}.png`) }); };
+/* wait for the scene to finish what it is doing: toast gone, camera arrived, a few frames drawn */
+const settled = pg => pg.waitForFunction(() => { const j = window.__journey; if (!j || !j.loaded()) return false; const c = j.cam; return document.getElementById('toast').hidden && Math.abs(c.zoom - c.tz) < .02 * c.tz && Math.hypot(c.x - c.tx, c.y - c.ty) < .3; }, { timeout: 10000 })
+  .then(() => pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))))));
+/* compare a screenshot with its approved 96-px-wide thumbnail: catches blank or broken scenes and big layout changes, shrugs off moving traffic */
+const THRESH = { mad: 11, bad: .10, dev: 8 };   // the same scene varies by at most ~6.5 / 4% between runs
+const cmp = (pg, curB64, refB64) => pg.evaluate(async (curB64, refB64, w) => {
+  const load = async b => { const i = new Image(); i.src = 'data:image/png;base64,' + b; await i.decode(); return i; };
+  const cur = await load(curB64), h = Math.round(w * cur.naturalHeight / cur.naturalWidth);
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d', { willReadFrequently: true }); x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, w, h);
+  const A = x.getImageData(0, 0, w, h).data, thumb = c.toDataURL('image/png').split(',')[1];
+  let m = 0; const lum = new Float32Array(w * h); for (let i = 0; i < w * h; i++) { lum[i] = .3 * A[i * 4] + .59 * A[i * 4 + 1] + .11 * A[i * 4 + 2]; m += lum[i]; } m /= w * h;
+  let v = 0; for (let i = 0; i < w * h; i++) v += (lum[i] - m) ** 2; const dev = Math.sqrt(v / (w * h));
+  if (!refB64) return { thumb, dev };
+  const ref = await load(refB64); if (ref.naturalWidth !== w || ref.naturalHeight !== h) return { thumb, dev, size: true };
+  x.clearRect(0, 0, w, h); x.drawImage(ref, 0, 0); const B = x.getImageData(0, 0, w, h).data; let sum = 0, bad = 0;
+  for (let i = 0; i < w * h; i++) { const d = (Math.abs(A[i * 4] - B[i * 4]) + Math.abs(A[i * 4 + 1] - B[i * 4 + 1]) + Math.abs(A[i * 4 + 2] - B[i * 4 + 2])) / 3; sum += d; if (d > 40) bad++; }
+  return { thumb, dev, mad: sum / (w * h), bad: bad / (w * h) };
+}, curB64, refB64, 96);
+const looks = [];
+const compareRef = async (pg, name, file) => {
+  const refFile = path.join(REF, `${name}.png`), have = fs.existsSync(refFile);
+  const r = await cmp(pg, fs.readFileSync(file).toString('base64'), have && !UPDATE ? fs.readFileSync(refFile).toString('base64') : null);
+  if (!have || UPDATE) { fs.writeFileSync(refFile, Buffer.from(r.thumb, 'base64')); looks.push(`${name}: reference ${have ? 'updated' : 'created'}`); return; }
+  looks.push(`${name}: diff ${r.mad === undefined ? 'size changed' : r.mad.toFixed(1) + ' / ' + (r.bad * 100).toFixed(0) + '% cells'}, contrast ${r.dev.toFixed(0)}`);
+  if (r.dev < THRESH.dev) errors.push(`${name}: the picture looks blank (contrast ${r.dev.toFixed(1)})`);
+  if (r.size) errors.push(`${name}: screenshot size differs from its reference (run UPDATE_REFS=1 if intended)`);
+  else if (r.mad > THRESH.mad || r.bad > THRESH.bad) errors.push(`${name}: differs from the approved reference (mean diff ${r.mad.toFixed(1)}, ${(r.bad * 100).toFixed(0)}% of cells); run UPDATE_REFS=1 if the change is intended`);
+};
+/* a screenshot is taken at a fixed hour with the world paused, so the sky and shadows are the same every run */
+const HOURS = { '07-night': 21 }, hourFor = name => HOURS[name] ?? (/^(09|10|11)/.test(name) ? 10 : 8.5);
+const pause = (pg, on) => pg.evaluate(on => { const b = document.getElementById('btnPause'); if ((b.getAttribute('aria-pressed') === 'true') !== on) b.click(); }, on);
+const shot = async (name, pg = page) => {
+  const fixed = !/^08/.test(name);   // 08 follows the avatar through a live crowd, so it is only a picture to look at
+  if (fixed) { await pg.evaluate(h => { const s = document.getElementById('timeSlider'); s.value = h; s.dispatchEvent(new Event('input')); }, hourFor(name)); await pause(pg, true); }
+  await settled(pg); const file = path.join(OUT, `${name}.png`); await pg.screenshot({ path: file });
+  if (fixed) { await compareRef(pg, name, file); await pause(pg, false); }
+};
 const click = id => page.click('#' + id);
 const setHour = h => page.evaluate(h => { const s = document.getElementById('timeSlider'); s.value = h; s.dispatchEvent(new Event('input')); }, h);
 
 const results = [];
-const step = async (name, fn) => { if (fn) await fn(); await shot(name); results.push({ view: name, fps: await fps() }); };
+const renderMs = () => page.evaluate(() => { const { render, inside } = window.__journey; if (inside()) return 0; const n = 20, t = performance.now(); for (let i = 0; i < n; i++) render(); return (performance.now() - t) / n; });
+const step = async (name, fn) => { if (fn) await fn(); await shot(name); results.push({ view: name, fps: await fps(), ms: await renderMs() }); };
 await step('01-default');
 await step('02-turn-right', () => click('btnRotR'));
 await step('03-street-level', () => click('btnAngle'));
@@ -312,20 +360,48 @@ await step('08-avatar-closeup', () => page.evaluate(() => { window.__journey.cam
 
 // save/load check: change state, reload, confirm it was restored
 await page.evaluate(() => { document.getElementById('btnBld').click(); const s = document.getElementById('timeSlider'); s.value = 15.5; s.dispatchEvent(new Event('input')); });
-await new Promise(r => setTimeout(r, 3500));
+await page.evaluate(() => window.__journey.saveState());   // the game also saves every 3 s; save now instead of sleeping
 const before = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, x: window.__journey.me.x, y: window.__journey.me.y, w: window.__journey.STAT.wallet, e: window.__journey.STAT.energy, g: window.__journey.STAT.goal }));
 await page.reload({ waitUntil: 'load' });
-await page.waitForFunction(() => !document.getElementById('loading'), { timeout: 30000 });
-await new Promise(r => setTimeout(r, 2500));
-const after = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, clock: document.getElementById('clockEn').textContent, x: window.__journey.me.x, y: window.__journey.me.y, follow: window.__journey.cam.follow === window.__journey.me, w: window.__journey.STAT.wallet, e: window.__journey.STAT.energy, g: window.__journey.STAT.goal }));
-const saveOk = before.b === after.b && before.f === after.f && /^3:/.test(after.clock) && Math.hypot(before.x - after.x, before.y - after.y) < 1 && after.follow && before.w === after.w && before.g === after.g && Math.abs(before.e - after.e) < 4;
-console.log(`Save/load: ${saveOk ? 'restored' : 'NOT restored'} (${after.b}, ${after.f}, ${after.clock}, avatar ${before.x.toFixed(1)},${before.y.toFixed(1)} -> ${after.x.toFixed(1)},${after.y.toFixed(1)}, following=${after.follow}, wallet ${before.w} -> ${after.w}, energy ${before.e.toFixed(0)} -> ${after.e.toFixed(0)}, goal ${before.g} -> ${after.g})`);
+await page.waitForFunction(() => window.__journey && window.__journey.loaded(), { timeout: 30000 });
+await settled(page);
+const after = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, hour: window.__journey.hour(), x: window.__journey.me.x, y: window.__journey.me.y, follow: window.__journey.cam.follow === window.__journey.me, w: window.__journey.STAT.wallet, e: window.__journey.STAT.energy, g: window.__journey.STAT.goal }));
+const saveOk = before.b === after.b && before.f === after.f && Math.abs(after.hour - 15.5) < .5 && Math.hypot(before.x - after.x, before.y - after.y) < 1 && after.follow && before.w === after.w && before.g === after.g && Math.abs(before.e - after.e) < 4;
+console.log(`Save/load: ${saveOk ? 'restored' : 'NOT restored'} (${after.b}, ${after.f}, hour ${after.hour.toFixed(1)}, avatar ${before.x.toFixed(1)},${before.y.toFixed(1)} -> ${after.x.toFixed(1)},${after.y.toFixed(1)}, following=${after.follow}, wallet ${before.w} -> ${after.w}, energy ${before.e.toFixed(0)} -> ${after.e.toFixed(0)}, goal ${before.g} -> ${after.g})`);
 if (!saveOk) errors.push('save/load did not restore state');
+// phone-sized run in a fresh browser context (no saved state): layout, status bar and the hotel menu must fit a 390x780 screen
+const ctx2 = await browser.createBrowserContext(), phone = await ctx2.newPage();
+await steady(phone);
+await phone.setViewport({ width: 390, height: 780, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+phone.on('pageerror', e => errors.push(`phone pageerror: ${e.message}`));
+phone.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`phone console: ${m.text()}`); });
+await phone.goto(url, { waitUntil: 'load' });
+await phone.waitForFunction(() => window.__journey && window.__journey.loaded() && !document.getElementById('loading'), { timeout: 30000 });
+await phone.evaluate(() => { const s = document.getElementById('timeSlider'); s.value = 10; s.dispatchEvent(new Event('input')); });
+await shot('10-phone-default', phone);
+const lay = await phone.evaluate(() => {
+  const R = sel => document.querySelector(sel).getBoundingClientRect(), fits = b => b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight;
+  const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  return { overflow: document.documentElement.scrollWidth > innerWidth, status: fits(R('#status')), title: fits(R('.title')), buttons: fits(R('#toolsToggle')) && fits(R('#soundFab')), clash: hit(R('.title'), R('#soundFab')) || hit(R('.title'), R('#toolsToggle')) || hit(R('#status'), R('#soundFab')) || hit(R('#status'), R('#toolsToggle')) };
+});
+console.log(`Phone layout: ${lay.overflow ? 'SCROLLS SIDEWAYS' : 'no sideways scroll'}, status ${lay.status ? 'fits' : 'CUT OFF'}, title ${lay.title ? 'fits' : 'CUT OFF'}, buttons ${lay.buttons ? 'fit' : 'CUT OFF'}, ${lay.clash ? 'PANELS OVERLAP' : 'no overlap'}`);
+if (lay.overflow || !lay.status || !lay.title || !lay.buttons || lay.clash) errors.push('phone layout broken: ' + JSON.stringify(lay));
+await phone.evaluate(() => { const { me, RESTO, enterRestaurant } = window.__journey; me.x = me.dx = RESTO.entry[0]; me.y = me.dy = RESTO.entry[1]; me.spd = 0; me.path = null; });
+await phone.waitForFunction(() => window.__journey.restoState() === 1, { timeout: 5000 });
+await phone.evaluate(() => window.__journey.enterRestaurant());
+await phone.waitForFunction(() => window.__journey.inside(), { timeout: 5000 });
+await new Promise(r => setTimeout(r, 400));
+const menu = await phone.evaluate(() => { const R = id => document.getElementById(id).getBoundingClientRect(), fits = b => b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight; const m = R('menu'), l = R('btnLeave'); return { menu: fits(m), leave: l.bottom <= innerHeight && l.top >= 0, scrolls: document.getElementById('menu').scrollHeight > document.getElementById('menu').clientHeight }; });
+console.log(`Phone hotel menu: ${menu.menu ? 'fits the screen' : 'CUT OFF'}, Leave button ${menu.leave ? 'visible' : 'HIDDEN'}${menu.scrolls ? ' (menu scrolls)' : ''}`);
+if (!menu.menu || !menu.leave) errors.push('phone hotel menu does not fit: ' + JSON.stringify(menu));
+await shot('11-phone-restaurant', phone);
+await ctx2.close();
 await browser.close();
 server.close();
 
 console.log(`Load: ${loadMs} ms`);
-for (const r of results) console.log(`${r.view.padEnd(18)} ${r.fps.toFixed(0)} fps`);
+for (const r of results) { console.log(`${r.view.padEnd(18)} ${r.fps.toFixed(0)} fps (capped at the display rate), draw cost ${r.ms.toFixed(1)} ms/frame`); if (r.ms > 60) errors.push(`${r.view}: drawing a frame took ${r.ms.toFixed(0)} ms`); }
+for (const l of looks) console.log('  ' + l);
 console.log(`Screenshots: ${path.relative(ROOT, OUT)}/`);
 if (errors.length) { console.log(`\nFAIL — ${errors.length} error(s):`); for (const e of errors) console.log('  ' + e); process.exit(1); }
 console.log('\nPASS — no errors');
