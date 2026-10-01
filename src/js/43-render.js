@@ -49,7 +49,7 @@ function render(){
     case 'sp':drawSpan(ctx,o);break;
     case 'bn':drawBanner(ctx,o,lodT);break;
     case 'v':drawVehicle(ctx,o,lodV);break;
-    case 'p':drawPerson(ctx,o,o.fixed?o.x:o.dx,o.fixed?o.y:o.dy,lodP);break;
+    case 'p':drawPerson(ctx,o,(o.fixed?o.x:o.dx)+(o.gx||0),(o.fixed?o.y:o.dy)+(o.gy||0),lodP);break;
     case 's':drawStall(ctx,o,lodS);break;
     case 'pod':drawPodium(ctx,o,lodT);break;
     case 'sh':drawShapla(ctx,lodT);drawPigeons(ctx);break;

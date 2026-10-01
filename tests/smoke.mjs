@@ -54,6 +54,15 @@ await page.evaluate(() => { document.getElementById('btnBld').textContent.includ
 const pos = () => page.evaluate(() => { const { me, cam } = window.__journey; return { x: me.x, y: me.y, follow: cam.follow === me, cx: cam.x, cy: cam.y }; });
 const settle = ms => new Promise(r => setTimeout(r, ms));
 await settle(1500);
+await page.evaluate(() => {   // start from a clear runway so a passer-by can't block the key test
+  const { me, navAt, hitDyn } = window.__journey;
+  for (let r = 0; r < 120; r += 4) for (let a = 0; a < 16; a++) {
+    const x0 = me.x + Math.cos(a) * r, y0 = me.y + Math.sin(a) * r; let ok = true;
+    for (let d = -1; d <= 9 && ok; d += .5) if (navAt(x0 + d, y0) || hitDyn(x0 + d, y0)) ok = false;
+    if (ok) { me.x = me.dx = x0; me.y = me.dy = y0; return; }
+  }
+});
+await settle(1200);
 const a0 = await pos();
 await page.keyboard.down('ArrowRight'); await settle(900); await page.keyboard.up('ArrowRight'); await settle(800);
 const a1 = await pos();
@@ -109,6 +118,55 @@ else {
   console.log(`Avatar tap-to-go: arrived ${miss.toFixed(1)} m from the tapped spot`);
   if (miss > 3) errors.push(`tap-to-go ended ${miss.toFixed(1)} m from the target`);
 }
+// sprint 5: bodies are solid, crowds give way, hard bumps get a reaction
+const bodies = await page.evaluate(() => {
+  const { me, nearestFree, navAt, stepMove, hitDyn, vehicles, fixedPeople, peds } = window.__journey;
+  const out = {};
+  // walk straight at a parked vehicle, then at a hawker, from each side; neither may be entered
+  const approach = (target, cx, cy) => {   // try each side; report the best attempt that actually touched the target
+    let best = null;
+    for (const [ux, uy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const r of [3, 4, 5]) {
+      const sx = cx + ux * r, sy = cy + uy * r; if (navAt(sx, sy) || hitDyn(sx, sy)) continue;
+      me.x = me.dx = sx; me.y = me.dy = sy; me.path = null; let hit = null;
+      for (let i = 0; i < 40; i++) { const dx = cx - me.x, dy = cy - me.y, d = Math.hypot(dx, dy) || 1; stepMove(dx / d * .3, dy / d * .3); if (me.hit) hit = me.hit; }
+      const res = { hit: !!hit, isTarget: hit === target, inside: !!hitDyn(me.x, me.y), dist: Math.hypot(cx - me.x, cy - me.y) };
+      if (res.inside || (res.isTarget && !best?.isTarget) || !best) best = res; if (res.inside) return res;
+    }
+    return best;
+  };
+  for (const v of vehicles.filter(v => v.hx !== undefined && v.parked && v.T && Math.abs(v.dx) < 300 && Math.abs(v.dy) < 300).slice(0, 8)) {
+    v.dx = v.x; v.dy = v.y; const r = approach(v, v.dx, v.dy); if (r && (!out.vehicle || (r.isTarget && !out.vehicle.isTarget))) out.vehicle = r; if (out.vehicle?.isTarget) break;
+  }
+  for (const h of fixedPeople.filter(f => f.stall && !f.hidden).slice(0, 8)) {
+    const r = approach(h, h.x, h.y); if (r && (!out.hawker || (r.isTarget && !out.hawker.isTarget))) out.hawker = r; if (out.hawker?.isTarget) break;
+  }
+  // crowd gives way: freeze one walker, stand a metre from it, step the yield logic, expect a sidestep
+  const cand = peds.filter(p => p.st === 'walk' && !p.onRoad && Math.abs(p.dx) < 200);
+  for (const p of cand) {
+    const f = nearestFree(p.dx + 1, p.dy, 1); if (!f || navAt(f[0], f[1])) continue;
+    me.x = me.dx = f[0]; me.y = me.dy = f[1]; me.spd = 0;
+    for (let i = 0; i < 40; i++) window.__journey.updYield(1 / 30);
+    const g = Math.hypot(p.gx || 0, p.gy || 0);
+    if (g > .2) { out.yield = { g }; me.x = me.dx = me.x + 20; me.y = me.dy = me.y + 20; for (let i = 0; i < 90; i++) window.__journey.updYield(1 / 30); out.yield.after = Math.hypot(p.gx || 0, p.gy || 0); break; }
+  }
+  return out;
+});
+const bump = await page.evaluate(() => {
+  const { me, bumpInto, bubbles, fixedPeople, vehicles } = window.__journey;
+  const h = fixedPeople.find(f => f.stall && !f.hidden), v = vehicles.find(v => v.T && !v.parked && v.hx !== undefined);
+  me.x = me.dx = h.x + 1; me.y = me.dy = h.y; me.spd = 8; bumpInto(h, 8);
+  const person = { stagger: me.bumpT > 0, slowed: me.spd < 3, said: bubbles.some(b => b.owner === h && /^bump_/.test(b.l.id)) };
+  v.honk = undefined; bumpInto(v, 8);
+  return { ...person, honked: v.honk !== undefined };
+});
+console.log(`Bump: person ${bump.said ? 'spoke' : 'SILENT'}, vehicle ${bump.honked ? 'honked' : 'SILENT'}, avatar ${bump.stagger && bump.slowed ? 'staggered' : 'DID NOT STAGGER'}`);
+if (!bump.said || !bump.honked || !bump.stagger || !bump.slowed) errors.push('bump reaction incomplete: ' + JSON.stringify(bump));
+const fmt = o => o ? `${o.dist.toFixed(2)} m from centre, ${o.inside ? 'INSIDE' : 'outside'}` : 'no spot';
+console.log(`Bodies: vehicle ${fmt(bodies.vehicle)}, hawker ${fmt(bodies.hawker)}, yield ${bodies.yield ? `${bodies.yield.g.toFixed(2)} m aside, back to ${bodies.yield.after.toFixed(2)} m` : 'NONE'}`);
+if (!bodies.vehicle || bodies.vehicle.inside || !bodies.vehicle.isTarget) errors.push('avatar can walk through a vehicle (or never touched it)');
+if (!bodies.hawker || bodies.hawker.inside || !bodies.hawker.isTarget) errors.push('avatar can walk through a hawker (or never touched one)');
+if (!bodies.yield || bodies.yield.after > .1) errors.push('walkers do not step aside and settle back');
+await page.evaluate(() => { const { me, nearestFree } = window.__journey; const f = nearestFree(me.x, me.y, 60); if (f) { me.x = me.dx = f[0]; me.y = me.dy = f[1]; } me.spd = 0; me.path = null; });
 await step('08-avatar-closeup', () => page.evaluate(() => { window.__journey.cam.tz = 16; }));
 
 // save/load check: change state, reload, confirm it was restored

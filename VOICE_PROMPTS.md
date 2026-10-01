@@ -155,6 +155,13 @@ Generate every line below. The Bangla script is what the model should read. The 
 | `player_pass_1` | V_TEEN | পাস দে! পাস দে! | Pass de! Pass de! | Pass it! Pass it! | `[shouting]` Across the club ground, breathless. |
 | `player_goal_1` | V_TEEN | গোওওল! | Gooool! | Goooal! | `[shouting]` Long joyful cry. 2 takes. |
 
+### Bumping into people
+
+| ID | Voice | Bangla | Romanised | English | Delivery |
+|---|---|---|---|---|---|
+| `bump_1` | V_OFFICE | আরে ভাই, দেখে হাঁটেন! ধাক্কা দিলেন তো! | Are bhai, dekhe haten! Dhakka dilen to! | Hey bhai, watch where you walk! You bumped right into me! | Startled, mildly annoyed, not angry. |
+| `bump_2` | V_AUNTY | উফ! সামনে দেখে চলেন না ভাই, এত তাড়া কীসের! | Uff! Samne dekhe chalen na bhai, eto tara kisher! | Oof! Look ahead when you walk bhai, what's the big hurry! | Sharp little gasp, then a scolding tone. |
+
 ### Kamalapur, schools and the snatcher
 
 | ID | Voice | Bangla | Romanised | English | Delivery |
@@ -202,7 +209,7 @@ Generate every line below. The Bangla script is what the model should read. The 
 ## 8. Checklist
 
 - [ ] 16 voices designed (section 4)
-- [ ] 56 lines generated, with 2–3 takes for hawker calls and helper shouts
+- [ ] 58 lines generated, with 2–3 takes for hawker calls and helper shouts
 - [ ] 9 SFX and 3 ambience loops (`amb_azan` optional, real recording only)
 - [ ] Files named exactly by ID, trimmed, levelled
 - [ ] Dropped into the scene with **Voices**, or listed in `voices/voices.js`

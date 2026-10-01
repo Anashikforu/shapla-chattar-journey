@@ -17,7 +17,7 @@ Features:
 - Supports single line generation (--line <id>), multiple takes (--takes <n>), and --dry-run.
 
 Usage:
-  # Dry run to inspect all 56 lines, styles, and character voices:
+  # Dry run to inspect all 58 lines, styles, and character voices:
   python3 generate_voices.py --dry-run
 
   # Generate all voices using prebuilt voices:
@@ -899,6 +899,30 @@ LINES = [
             "AUDIO PROFILE: Commuter stuck in car/CNG, 34. "
             "THE SCENE: Sitting in deadlocked traffic at the roundabout. "
             "DIRECTOR'S NOTES: Exasperated sigh turning into half-amused laughter, classic Dhaka patience."
+        ),
+    },
+    {
+        "id": "bump_1",
+        "voice": "V_OFFICE",
+        "display_bn": "আরে ভাই, দেখে হাঁটেন! ধাক্কা দিলেন তো!",
+        "tts_text": "<gasp> আরে ভাই, দেখে হাঁটেন! ধাক্কা দিলেন তো!",
+        "en": "Hey bhai, watch where you walk! You bumped right into me!",
+        "style": (
+            "AUDIO PROFILE: Office worker, 34. "
+            "THE SCENE: Walking along the crowded footpath when a stranger barges into him. "
+            "DIRECTOR'S NOTES: Startled, mildly annoyed, not angry."
+        ),
+    },
+    {
+        "id": "bump_2",
+        "voice": "V_AUNTY",
+        "display_bn": "উফ! সামনে দেখে চলেন না ভাই, এত তাড়া কীসের!",
+        "tts_text": "<gasp> উফ! সামনে দেখে চলেন না ভাই, এত তাড়া কীসের!",
+        "en": "Oof! Look ahead when you walk bhai, what's the big hurry!",
+        "style": (
+            "AUDIO PROFILE: Middle-aged woman, 45. "
+            "THE SCENE: Shopping bag knocked as someone rushes past on the footpath. "
+            "DIRECTOR'S NOTES: Sharp little gasp, then a scolding tone."
         ),
     },
     {
