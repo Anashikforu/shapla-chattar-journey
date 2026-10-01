@@ -1,0 +1,160 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shapla Chattar Live</title>
+<meta name="description" content="A live pencil-and-colored-pencil sketch of Shapla Chattar, Motijheel, Dhaka. Every line drawn in JavaScript.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atma:wght@400;600&family=Kalam:wght@400;700&display=swap">
+<style>
+/* Layout: full-bleed sketchbook canvas; controls pinned as taped paper notes in the corners */
+:root{
+  --paper:#efe8d8;
+  --paper-note:#f7f2e6;
+  --graphite:#2f2d2a;
+  --graphite-soft:#6b655b;
+  --lead-red:#b8432f;
+  --pencil-blue:#3f5f8a;
+  --tape:rgba(214,196,140,.72);
+  --f-hand:'Kalam','Comic Sans MS','Segoe Print',cursive;
+  --f-bn:'Atma','Kalam','Noto Sans Bengali',sans-serif;
+  color-scheme:light;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--graphite);font-family:var(--f-hand);overflow:hidden;-webkit-font-smoothing:antialiased}
+#scene{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#scene.dragging{cursor:grabbing}
+.note{position:fixed;background:var(--paper-note);border:1.5px solid var(--graphite);
+  border-radius:255px 14px 225px 14px/14px 225px 14px 255px;
+  box-shadow:2px 3px 0 rgba(47,45,42,.12);padding:10px 14px;z-index:5}
+.note::before{content:"";position:absolute;top:-10px;left:50%;width:70px;height:18px;margin-left:-35px;background:var(--tape);transform:rotate(-3deg);border-radius:2px}
+.title{top:calc(12px + env(safe-area-inset-top,0px));left:14px;transform:rotate(-.8deg);max-width:min(360px,calc(100vw - 28px))}
+.title h1{margin:0;font-weight:400;line-height:1.05;text-wrap:balance}
+.title .bn{font-family:var(--f-bn);font-size:30px;font-weight:600;color:var(--lead-red)}
+.title .en{font-size:17px;color:var(--graphite-soft);margin-left:4px}
+.title p{margin:4px 0 0;font-size:14px}
+.clock{font-variant-numeric:tabular-nums}
+.clock .bn{font-family:var(--f-bn);font-size:16px;color:var(--graphite);margin:0}
+.hint{color:var(--graphite-soft);font-size:13px!important}
+.tools{top:calc(12px + env(safe-area-inset-top,0px));right:14px;transform:rotate(.6deg);width:238px;display:flex;flex-direction:column;gap:7px}
+.tools label{font-size:13px;display:flex;align-items:center;gap:8px}
+.tools input[type=range]{flex:1;accent-color:var(--lead-red);min-width:0}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+button{font:inherit;font-size:13.5px;color:var(--graphite);background:transparent;border:1.3px solid var(--graphite);
+  border-radius:15px 225px 15px 255px/225px 15px 255px 15px;padding:4px 8px;cursor:pointer;line-height:1.25}
+button:hover{background:rgba(184,67,47,.09)}
+button[aria-pressed=true]{background:rgba(63,95,138,.14);border-color:var(--pencil-blue)}
+button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outline-offset:2px}
+#soundFab{position:fixed;right:118px;top:calc(12px + env(safe-area-inset-top,0px));z-index:6;display:none;background:var(--paper-note)}
+#toolsToggle{position:fixed;right:14px;top:calc(12px + env(safe-area-inset-top,0px));z-index:6;display:none;background:var(--paper-note)}
+.card{left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(320px,calc(100vw - 28px));transform:rotate(-.5deg)}
+.card h2{margin:0;font-size:20px;font-weight:700;line-height:1.1}
+.card h2 .bn{font-family:var(--f-bn);font-weight:600;color:var(--lead-red);margin-right:6px}
+.card .role{font-size:13.5px;color:var(--graphite-soft);margin:2px 0 6px}
+.card .now{font-size:14.5px;margin:0 0 4px}
+.card .thought{font-size:14px;margin:0 0 8px;color:var(--pencil-blue)}
+.card .facts{font-size:13px;color:var(--graphite-soft);margin:0 0 8px;font-variant-numeric:tabular-nums}
+.zoom{position:fixed;right:14px;bottom:calc(196px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:6px;z-index:5}
+.zoom button{width:36px;height:36px;font-size:20px;background:var(--paper-note);padding:0}
+#mini{position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:170px;height:170px;z-index:5;
+  border:1.5px solid var(--graphite);border-radius:14px 225px 14px 255px/255px 14px 225px 14px;background:var(--paper-note);cursor:crosshair}
+.panel{top:50%;left:50%;transform:translate(-50%,-50%) rotate(-.4deg);width:min(560px,calc(100vw - 32px));max-height:min(78vh,640px);display:flex;flex-direction:column;gap:8px;z-index:9}
+.panel h2{margin:0;font-size:21px}
+.panel p{margin:0;font-size:14px;line-height:1.4}
+.panel code{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:rgba(47,45,42,.07);padding:0 4px;border-radius:3px}
+.vlist{overflow:auto;border-top:1px dashed var(--graphite-soft);padding-top:6px;min-height:0;flex:1}
+.vlist table{border-collapse:collapse;width:100%;font-size:13px}
+.vlist td{padding:3px 6px;vertical-align:top;border-bottom:1px dotted rgba(47,45,42,.2)}
+.vlist td:first-child{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;white-space:nowrap}
+.vlist .bnl{font-family:var(--f-bn)}
+.vlist .ok{color:#2f7a3f;font-weight:700}
+.vlist .miss{color:var(--graphite-soft)}
+.drop{border:1.5px dashed var(--graphite-soft);border-radius:10px;padding:10px;text-align:center;font-size:14px}
+.drop.over{background:rgba(63,95,138,.12);border-color:var(--pencil-blue)}
+.panel .row{grid-template-columns:auto auto 1fr;align-items:center}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:10;font-size:14px;padding:6px 14px}
+#toast::before{display:none}
+#loading{position:fixed;inset:0;display:grid;place-items:center;z-index:20;background:var(--paper);font-size:22px;color:var(--graphite-soft);pointer-events:none;transition:opacity .6s}
+#loading.done{opacity:0}
+@media (max-width:640px){
+  .tools{display:none;top:calc(56px + env(safe-area-inset-top,0px));width:min(260px,calc(100vw - 28px))}
+  .tools.open{display:flex}
+  #toolsToggle{display:block}
+  #soundFab{display:block}
+  .title{max-width:calc(100vw - 120px);padding:8px 10px}
+  .title .bn{font-size:22px}.title .en{font-size:14px}
+  .hint{display:none}
+  #mini{display:none}
+  .zoom{bottom:calc(14px + env(safe-area-inset-bottom,0px))}
+  .card{bottom:calc(14px + env(safe-area-inset-bottom,0px));width:calc(100vw - 90px)}
+}
+</style>
+
+<canvas id="scene" aria-label="Live pencil sketch of Shapla Chattar in Motijheel, Dhaka. Drag to pan, scroll to zoom, click a person or vehicle to follow them."></canvas>
+
+<header class="note title">
+  <h1><span class="bn">শাপলা চত্বর</span><span class="en">Motijheel, Dhaka</span></h1>
+  <p class="clock"><span class="bn" id="clockBn">সকাল ৮:৩০</span> · <span id="clockEn">8:30 AM</span> <span id="weatherTxt"></span></p>
+  <p class="hint">Drag to wander · scroll or pinch to zoom · click anyone to follow</p>
+</header>
+
+<button id="toolsToggle" aria-controls="tools" aria-expanded="false">Controls</button>
+<button id="soundFab" aria-pressed="true" aria-label="Turn sound off">Sound: on</button>
+<aside class="note tools" id="tools" aria-label="Scene controls">
+  <label for="timeSlider">Time <input id="timeSlider" type="range" min="0" max="23.99" step="0.05" value="8.5"></label>
+  <div class="row">
+    <button id="btnPause" aria-pressed="false">Pause</button>
+    <button id="btnSpeed">Clock: 1×</button>
+  </div>
+  <div class="row">
+    <button id="btnRain">Rain: auto</button>
+    <button id="btnFriday" aria-pressed="false">Weekend: off</button>
+  </div>
+  <div class="row">
+    <button id="btnSound" aria-pressed="true">Sound: on</button>
+    <button id="btnVoices">Voices 0</button>
+  </div>
+  <div class="row">
+    <button id="btnRotL" aria-label="Turn the view left">⟲ Turn left</button>
+    <button id="btnRotR" aria-label="Turn the view right">Turn right ⟳</button>
+  </div>
+  <div class="row">
+    <button id="btnAngle">Angle: bird's-eye</button>
+    <span id="facing" style="font-size:13px;align-self:center;text-align:center">Looking north</span>
+  </div>
+  <div class="row">
+    <button id="btnBld">Buildings: full</button>
+    <span style="font-size:12px;align-self:center;text-align:center;color:var(--graphite-soft)">B key cycles</span>
+  </div>
+  <div class="row">
+    <button id="btnLang">Speech: বাংলা</button>
+    <button id="btnFollow">Follow someone</button>
+  </div>
+</aside>
+
+<section class="note card" id="card" hidden aria-live="polite">
+  <h2 id="cardName"></h2>
+  <p class="role" id="cardRole"></p>
+  <p class="now" id="cardNow"></p>
+  <p class="thought" id="cardThought"></p>
+  <p class="facts" id="cardFacts"></p>
+  <button id="cardClose">Stop following</button>
+</section>
+
+<div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button></div>
+<canvas id="mini" width="340" height="340" aria-label="Minimap. Click to jump."></canvas>
+
+<section class="note panel" id="voicePanel" hidden aria-label="Voice clips">
+  <h2>Voices for the street</h2>
+  <p>Generate the clips with any voice model (the prompt sheet is in <code>VOICE_PROMPTS.md</code>), name each file after its ID, like <code>hawker_tea_1.mp3</code>. Extra takes: <code>hawker_tea_1-b.mp3</code>. Drop them here or choose them. Missing clips fall back to speech bubbles and drawn-in-code sounds.</p>
+  <div class="drop" id="drop">Drop audio files here</div>
+  <div class="row"><button id="pickFiles">Choose files…</button><button id="closePanel">Close</button><span id="vcount" style="font-size:13px"></span></div>
+  <div class="vlist"><table id="vtable"></table></div>
+</section>
+<input type="file" id="voiceFiles" accept="audio/*" multiple hidden>
+<div class="note" id="toast" hidden></div>
+<div id="loading">Sharpening pencils…</div>
+
+<script src="voices/voices.js" onerror="this.remove()"></script>
+<script>
+(()=>{
