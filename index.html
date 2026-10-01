@@ -2106,11 +2106,22 @@ const nav=new Uint8Array(MW*MW);   // 1 = the avatar cannot stand here (building
 const me={role:'me',name:'You',x:0,y:0,dx:0,dy:0,fc:1,ph:0,pose:'stand',act:null,spd:0,path:null,goal:null,stuck:0,look:null};
 const navAt=(x,y)=>{const k=mk(x,y);return k<0||nav[k]===1||Math.abs(x)>E-8||Math.abs(y)>E-8};   // true = blocked
 function initNav(){
-  for(let k=0;k<nav.length;k++)if(occ[k]||mask[k]===3)nav[k]=1;
+  /* solid ground: building footprints (not whole reserved sites, so plazas, campuses, the station hall and grounds are walkable), the island, trunks, stalls, street furniture */
   const cells=(x,y,r,f)=>{for(let j=Math.floor(y-r+MO);j<=Math.floor(y+r+MO);j++)for(let i=Math.floor(x-r+MO);i<=Math.floor(x+r+MO);i++){if(i<0||j<0||i>=MW||j>=MW)continue;if(f(i+.5-MO-x,j+.5-MO-y))nav[j*MW+i]=1}};
+  const quad=q=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1])}
+    for(let j=Math.floor(y0+MO)-1;j<=Math.ceil(y1+MO)+1;j++)for(let i=Math.floor(x0+MO)-1;i<=Math.ceil(x1+MO)+1;i++){if(i<0||j<0||i>=MW||j>=MW)continue;if(inQuad(q,i-MO+.5,j-MO+.5))nav[j*MW+i]=1}
+    for(let e=0;e<4;e++){const a=q[e],b=q[(e+1)%4],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/.35));for(let s=0;s<=n;s++){const k=mk(a[0]+(b[0]-a[0])*s/n,a[1]+(b[1]-a[1])*s/n);if(k>=0)nav[k]=1}}};
+  for(const b of buildings)for(const p of b.parts)if(!(p.z0>0))quad(p.q);
+  for(let k=0;k<nav.length;k++)if(mask[k]===3)nav[k]=1;
   for(const t of trees)cells(t.x,t.y,.7,(u,v)=>u*u+v*v<=.49);
   for(const s of stalls){const hw=s.w/2+.2,hd=s.d/2+.2;cells(s.x,s.y,Math.hypot(hw,hd),(u,v)=>Math.abs(u*s.tx+v*s.ty)<=hw&&Math.abs(u*s.nx+v*s.ny)<=hd)}
   for(const o of staticObs){const r=Math.min(o.len,o.wid)/2;cells(o.x,o.y,r,(u,v)=>u*u+v*v<=r*r)}
+  for(const g of metro.segs)if(g.pier)cells(g.a[0],g.a[1],1.4,(u,v)=>u*u+v*v<=1.96);
+  /* things inside the reserved sites that are not buildings */
+  const K=sites.kamalapur;if(K){quad([FW(K,-60,83),FW(K,K.L+60,83),FW(K,K.L+60,99),FW(K,-60,99)]);   // the tracks
+    for(let i=0;i<=6;i++)for(let j=0;j<=6;j++){const c=FW(K,17+i*11,14+j*11);cells(c[0],c[1],.7,(u,v)=>u*u+v*v<=.49)}}   // shell-roof columns
+  const G=sites.green;if(G){const c=FW(G,G.L*.42,G.D*.55),ang=Math.atan2(G.t[1],G.t[0]),rx=G.L*.2,ry=G.D*.16,ca=Math.cos(ang),sa=Math.sin(ang);   // the pond
+    cells(c[0],c[1],Math.max(rx,ry)+1,(u,v)=>{const a=u*ca+v*sa,b=-u*sa+v*ca;return(a/rx)**2+(b/ry)**2<=1})}
 }
 function nearestFree(x,y,R=16){if(!navAt(x,y))return[x,y];for(let r=1;r<=R;r++)for(let a=0,n=r*8;a<n;a++){const t=a/n*TAU,px=x+Math.cos(t)*r,py=y+Math.sin(t)*r;if(!navAt(px,py))return[px,py]}return null}
 function initAvatar(){
@@ -2123,29 +2134,31 @@ function initAvatar(){
 
 /* A* over the 1 m nav grid, then string-pulled into a few straight legs */
 const AG=new Float32Array(MW*MW),ASEEN=new Uint32Array(MW*MW),APAR=new Int32Array(MW*MW);let ASEEN_ID=0;
-function findPath(ax,ay,bx,by){
+function findPath(ax,ay,bx,by){   // returns a list of legs, or null; .partial is set when it only gets part of the way
   const s=mk(ax,ay),g=mk(bx,by);if(s<0||g<0)return null;const gi=g%MW,gj=(g/MW)|0,id=++ASEEN_ID;
   const hk=[],hv=[];
   const push=(f,n)=>{let i=hk.length;hk.push(f);hv.push(n);while(i>0){const p=(i-1)>>1;if(hk[p]<=f)break;hk[i]=hk[p];hv[i]=hv[p];i=p}hk[i]=f;hv[i]=n};
   const pop=()=>{const top=hv[0],f=hk.pop(),n=hv.pop();if(hk.length){let i=0;for(;;){let c=2*i+1;if(c>=hk.length)break;if(c+1<hk.length&&hk[c+1]<hk[c])c++;if(hk[c]>=f)break;hk[i]=hk[c];hv[i]=hv[c];i=c}hk[i]=f;hv[i]=n}return top};
   const h=(i,j)=>{const dx=Math.abs(i-gi),dy=Math.abs(j-gj);return(dx+dy+(Math.SQRT2-2)*Math.min(dx,dy))*1.15};
-  ASEEN[s]=id;AG[s]=0;APAR[s]=-1;push(h(s%MW,(s/MW)|0),s);let found=false;
+  ASEEN[s]=id;AG[s]=0;APAR[s]=-1;push(h(s%MW,(s/MW)|0),s);let found=false,near=s,nearD=Math.hypot(s%MW-gi,((s/MW)|0)-gj);
   for(let n=0;hk.length&&n<300000;n++){
-    const c=pop();if(c===g){found=true;break}const ci=c%MW,cj=(c/MW)|0,cg=AG[c];
+    const c=pop();if(c===g){found=true;break}const ci=c%MW,cj=(c/MW)|0,cg=AG[c];const dg=Math.hypot(ci-gi,cj-gj);if(dg<nearD){nearD=dg;near=c}
     for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){if(!di&&!dj)continue;const ni=ci+di,nj=cj+dj;if(ni<0||nj<0||ni>=MW||nj>=MW)continue;const k=nj*MW+ni;if(nav[k])continue;
       if(di&&dj&&(nav[cj*MW+ni]||nav[nj*MW+ci]))continue;   // no cutting corners
       const ng=cg+(di&&dj?Math.SQRT2:1);if(ASEEN[k]===id&&AG[k]<=ng)continue;ASEEN[k]=id;AG[k]=ng;APAR[k]=c;push(ng+h(ni,nj),k)}}
-  if(!found)return null;
-  const cellsRev=[];for(let k=g;k>=0;k=APAR[k])cellsRev.push([k%MW-MO+.5,((k/MW)|0)-MO+.5]);const pts=cellsRev.reverse();pts[0]=[ax,ay];pts[pts.length-1]=[bx,by];
+  let end=g;if(!found){   // walled in: settle for the closest reachable ground, if that gets us meaningfully nearer
+    if(near===s||nearD>Math.hypot(s%MW-gi,((s/MW)|0)-gj)-3)return null;end=near;bx=near%MW-MO+.5;by=((near/MW)|0)-MO+.5}
+  const cellsRev=[];for(let k=end;k>=0;k=APAR[k])cellsRev.push([k%MW-MO+.5,((k/MW)|0)-MO+.5]);const pts=cellsRev.reverse();pts[0]=[ax,ay];pts[pts.length-1]=[bx,by];
   const clear=(x0,y0,x1,y1)=>{const n=Math.ceil(Math.hypot(x1-x0,y1-y0)/.4);for(let i=1;i<=n;i++)if(navAt(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n))return false;return true};
   const out=[];let i=0;while(i<pts.length-1){let j=Math.min(pts.length-1,i+80);while(j>i+1&&!clear(pts[i][0],pts[i][1],pts[j][0],pts[j][1]))j--;out.push(pts[j]);i=j}
-  return out;
+  out.partial=!found;return out;
 }
 function followMe(){if(cam.follow!==me){cam.follow=me;hideCard()}if(cam.tz<5)cam.tz=6.5}
 function walkTo(wx,wy){
   const g=nearestFree(wx,wy);if(!g){toast("Can't walk there.");return false}
-  const p=findPath(me.x,me.y,g[0],g[1]);if(!p){toast('No way through to there.');return false}
-  me.path=p;me.goal=g;me.stuck=0;me.replanned=false;followMe();return true}
+  const p=findPath(me.x,me.y,g[0],g[1]);if(!p){toast(L2('ওদিকে যাওয়ার পথ নেই।','No way through to there.'));return false}
+  me.path=p;me.goal=p.partial?p[p.length-1]:g;me.stuck=0;me.replanned=false;followMe();
+  if(p.partial)toast(L2('ঠিক ওখানে যাওয়া যাচ্ছে না, যতটা কাছে যাওয়া যায় যাচ্ছি।','Can\'t get all the way there. Going as close as I can.'));return true}
 
 /* held movement keys (physical positions, so WASD works on any layout) */
 const MKEYS={KeyW:[0,-1],ArrowUp:[0,-1],KeyS:[0,1],ArrowDown:[0,1],KeyA:[-1,0],ArrowLeft:[-1,0],KeyD:[1,0],ArrowRight:[1,0]};
@@ -2210,13 +2223,13 @@ function updAvatar(dt){
     if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;me.enterOnArrive=false;if(cam.follow!==me)followMe()}}
   else if(me.path){const wp=me.path[0],dx=wp[0]-me.x,dy=wp[1]-me.y,d=Math.hypot(dx,dy);
     if(d<.35){me.path.shift();if(!me.path.length){me.path=null;me.goal=null}}else{vx=dx/d;vy=dy/d;want=Math.min(1,d/.8+.25)}}
-  const run=sprint&&canSprint(),top=clamp(100/cam.zoom,3,12)*(run?1.7:1)*tiredK();
+  const run=sprint&&canSprint(),top=clamp(60/cam.zoom,3,6)*(run?1.5:1)*tiredK();   // never faster than the traffic (9 m/s flat out)
   me.spd+=clamp(top*want-me.spd,-60*dt,45*dt);
   if(me.spd>.05&&(vx||vy)){const moved=movedNow=stepMove(vx*me.spd*dt,vy*me.spd*dt);
     if(me.path){me.stuck=moved<me.spd*dt*.3?me.stuck+dt:0;
       if(me.stuck>(me.hit?3:.7)){   // a wall is final, but traffic and crowds move on: wait, re-plan once, then give up
         const np=!me.replanned&&me.goal&&findPath(me.x,me.y,me.goal[0],me.goal[1]);
-        if(np){me.path=np;me.stuck=0;me.replanned=true}else{me.path=null;me.goal=null;me.spd=0}}}
+        if(np){me.path=np;me.stuck=0;me.replanned=true}else{me.path=null;me.goal=null;me.spd=0;toast(L2('পথ আটকে গেছে। আবার ট্যাপ করুন।','Blocked. Tap again to try another way.'))}}}
     if(me.hit&&me.spd>2.5&&moved<me.spd*dt*.6)bumpInto(me.hit,me.spd);
     const fx=sdir(vx,vy);if(Math.abs(fx)>.05)me.fc=fx>0?1:-1}
   else if(!want)me.spd=Math.max(0,me.spd-60*dt);
@@ -2441,8 +2454,5 @@ function drawGoalPointer(c){
   else{const dx=s[0]-W/2,dy=s[1]-H/2,a=Math.atan2(dy,dx),ex=W*.42,ey=H*.4,k=1/Math.sqrt((Math.cos(a)/ex)**2+(Math.sin(a)/ey)**2),x=W/2+Math.cos(a)*k,y=H/2+Math.sin(a)*k,u=[Math.cos(a),Math.sin(a)],n=[-u[1],u[0]],o=Math.sin(b)*3;
     const tri=[[x+u[0]*(14+o),y+u[1]*(14+o)],[x-u[0]*6+n[0]*10,y-u[1]*6+n[1]*10],[x-u[0]*6-n[0]*10,y-u[1]*6-n[1]*10]];c.beginPath();ppath(c,tri);c.fill();c.beginPath();spoly(c,tri,1.2);c.stroke()}
   c.restore()}
-
-/* ---------------- test hooks: the whole script lives in an IIFE, so tests reach in through this one handle ---------------- */
-window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople,hitDyn,updYield,bumpInto,bubbles,STAT,GOALS,goalNow,addMoney,updEnergy,goalPos,RESTO,MENU,enterRestaurant,leaveRestaurant,restoState,cellAt,hour:()=>HOUR,inside:()=>INSIDE,who:()=>cam.follow&&(cam.follow.name||(cam.follow.T&&cam.follow.T.en)||'?')+(cam.follow.stall?' (stall hawker)':'')};
 })();
 </script>

@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
   fs.createReadStream(p).pipe(res);
 });
 await new Promise(r => server.listen(0, r));
-const url = `http://localhost:${server.address().port}/index.html`;
+const url = `http://localhost:${server.address().port}/index.test.html`;   // the same build plus the test handle
 fs.mkdirSync(OUT, { recursive: true });
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
@@ -69,7 +69,7 @@ const a1 = await pos();
 const moved = Math.hypot(a1.x - a0.x, a1.y - a0.y);
 const camGap = Math.hypot(a1.cx - a1.x, a1.cy - a1.y);
 console.log(`Avatar keys: moved ${moved.toFixed(1)} m, camera ${camGap.toFixed(1)} m from avatar, following=${a1.follow}`);
-if (moved < 3) errors.push(`avatar did not move with keys (moved ${moved.toFixed(2)} m): ` + JSON.stringify(await page.evaluate(() => { const { me, cam, STAT } = window.__journey; return { inside: window.__journey.inside(), spd: me.spd, hit: me.hit ? (me.hit.T ? 'vehicle' : me.hit.stall ? 'hawker' : 'person') : null, energy: STAT.energy, follow: cam.follow === me, zoom: cam.zoom, active: document.activeElement && document.activeElement.id }; })));
+if (moved < 2.5) errors.push(`avatar did not move with keys (moved ${moved.toFixed(2)} m): ` + JSON.stringify(await page.evaluate(() => { const { me, cam, STAT } = window.__journey; return { inside: window.__journey.inside(), spd: me.spd, hit: me.hit ? (me.hit.T ? 'vehicle' : me.hit.stall ? 'hawker' : 'person') : null, energy: STAT.energy, follow: cam.follow === me, zoom: cam.zoom, active: document.activeElement && document.activeElement.id }; })));
 if (!a1.follow || camGap > 8) errors.push('camera is not following the avatar');
 // held 'd' also works on its own, and tired legs are slower than fresh ones
 const holdRun = async energy => {
@@ -78,7 +78,7 @@ const holdRun = async energy => {
   const sp = await page.evaluate(() => window.__journey.me.spd); await page.keyboard.up('Shift'); await page.keyboard.up('d'); await settle(100);
   return sp;
 };
-let fresh = 0; for (let tries = 0; tries < 3 && fresh < 8; tries++) fresh = await holdRun(100);   // a passer-by can legitimately block a try
+let fresh = 0; for (let tries = 0; tries < 3 && fresh < 5; tries++) fresh = await holdRun(100);   // a passer-by can legitimately block a try
 const tired = await holdRun(0);
 console.log(`Energy: fresh run ${fresh.toFixed(1)} m/s, exhausted ${tired.toFixed(1)} m/s`);
 if (!(fresh > 0)) errors.push('avatar speed is zero while a key is held');
@@ -108,6 +108,35 @@ const wall = await page.evaluate(() => {
 });
 console.log(`Avatar walls: building centre ${wall ? 'blocked' : 'OPEN'}, avatar ${wall && !wall.blocked ? 'stayed outside' : 'CLIPPED IN'}`);
 if (!wall || wall.blocked) errors.push('avatar can walk into buildings');
+// plazas, campuses and the station hall are walkable now; the pond, tracks and columns are not
+const plazas = await page.evaluate(() => {
+  const { sites, FW, navAt, nearestFree, findPath } = window.__journey, out = { free: {} };
+  for (const name of ['baitul', 'kamalapur', 'ndc', 'mgbhs', 'green']) {
+    const F = sites[name]; if (!F) continue; let free = 0, total = 0;
+    for (let a = 2; a < F.L - 2; a += 2) for (let b = 2; b < F.D - 2; b += 2) { const p = FW(F, a, b); total++; if (!navAt(p[0], p[1])) free++; }
+    out.free[name] = +(free / total).toFixed(2);
+  }
+  const K = sites.kamalapur, G = sites.green, B = sites.baitul;
+  if (K) { const r = FW(K, 50, 90), h = FW(K, 22.5, 19.5), col = FW(K, 28, 25); out.rails = navAt(r[0], r[1]); out.hall = !navAt(h[0], h[1]); out.column = navAt(col[0], col[1]); }
+  if (G) { const c = FW(G, G.L * .42, G.D * .55); out.pond = navAt(c[0], c[1]); }
+  if (B) { const a = nearestFree(...FW(B, 8, 8), 8), b = nearestFree(...FW(B, B.L - 8, B.D - 8), 8); out.route = !!(a && b && findPath(a[0], a[1], b[0], b[1])); }
+  return out;
+});
+console.log(`Plazas: free share ${JSON.stringify(plazas.free)}; pond ${plazas.pond ? 'solid' : 'OPEN'}, tracks ${plazas.rails ? 'solid' : 'OPEN'}, station hall ${plazas.hall ? 'open' : 'BLOCKED'}, column ${plazas.column ? 'solid' : 'OPEN'}, route across Baitul plaza ${plazas.route ? 'found' : 'NONE'}`);
+for (const [n, f] of Object.entries(plazas.free)) if (f < .4) errors.push(`site ${n} is still mostly blocked (${f})`);
+if (!plazas.pond || !plazas.rails || !plazas.hall || !plazas.column || !plazas.route) errors.push('site details wrong: ' + JSON.stringify(plazas));
+// walled-in targets: walk as close as possible instead of giving up
+const partial = await page.evaluate(() => {
+  const { findPath, nearestFree } = window.__journey; let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 60; i++) {
+    const a = nearestFree((rnd() - .5) * 700, (rnd() - .5) * 700, 20), b = nearestFree((rnd() - .5) * 700, (rnd() - .5) * 700, 20); if (!a || !b) continue;
+    const p = findPath(a[0], a[1], b[0], b[1]);
+    if (p && p.partial) { const end = p[p.length - 1]; return { start: Math.hypot(a[0] - b[0], a[1] - b[1]), end: Math.hypot(end[0] - b[0], end[1] - b[1]) }; }
+  }
+  return null;
+});
+console.log(`Walled-in target: ${partial ? `route ends ${partial.end.toFixed(0)} m from it (started ${partial.start.toFixed(0)} m away)` : 'no partial route found'}`);
+if (!partial || partial.end > partial.start * .8) errors.push('unreachable targets should still get a route to the nearest reachable ground: ' + JSON.stringify(partial));
 // tap-to-go: click empty ground 25-70 m away (skipping spots with a person or vehicle under the tap), expect the avatar to arrive (A* around obstacles)
 await page.evaluate(() => { const { me, cam, nearestFree, cellAt } = window.__journey; let f0 = null; for (let r = 0; r < 80 && !f0; r += 2) for (let a = 0; a < 16 && !f0; a++) { const g = nearestFree(Math.cos(a) * r, -60 + Math.sin(a) * r, 1); if (g && cellAt(g[0], g[1]) === 1) f0 = g; } f0 = f0 || nearestFree(0, -60, 60); me.x = me.dx = f0[0]; me.y = me.dy = f0[1]; me.path = null; cam.follow = me; cam.tz = 6.5; });
 await settle(2500);
