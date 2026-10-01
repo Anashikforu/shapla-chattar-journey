@@ -43,7 +43,7 @@ function followMe(){if(cam.follow!==me){cam.follow=me;hideCard()}if(cam.tz<5)cam
 function walkTo(wx,wy){
   const g=nearestFree(wx,wy);if(!g){toast("Can't walk there.");return false}
   const p=findPath(me.x,me.y,g[0],g[1]);if(!p){toast('No way through to there.');return false}
-  me.path=p;me.goal=g;me.stuck=0;followMe();return true}
+  me.path=p;me.goal=g;me.stuck=0;me.replanned=false;followMe();return true}
 
 /* held movement keys (physical positions, so WASD works on any layout) */
 const MKEYS={KeyW:[0,-1],ArrowUp:[0,-1],KeyS:[0,1],ArrowDown:[0,1],KeyA:[-1,0],ArrowLeft:[-1,0],KeyD:[1,0],ArrowRight:[1,0]};
@@ -103,18 +103,22 @@ function honkIfBlocking(){   // a vehicle stopped right in front of us leans on 
   for(const v of vehicles){if(v.hx===undefined||v.parked||v.spd>1)continue;const ux=me.x-v.dx,uy=me.y-v.dy;if(ux>9||ux<-9||uy>9||uy<-9)continue;
     const a=ux*v.hx+uy*v.hy,l=-ux*v.hy+uy*v.hx;if(a>0&&a<v.len/2+6&&Math.abs(l)<v.wid/2+1&&v.honkT>1.5)v.honkT=mr(.4,1.4)}}
 function updAvatar(dt){
-  let vx=0,vy=0,want=0;
+  let vx=0,vy=0,want=0,movedNow=0;
   if(heldKeys.size){let sx=0,sy=0;for(const k of heldKeys){sx+=MKEYS[k][0];sy+=MKEYS[k][1]}
     if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;if(cam.follow!==me)followMe()}}
   else if(me.path){const wp=me.path[0],dx=wp[0]-me.x,dy=wp[1]-me.y,d=Math.hypot(dx,dy);
     if(d<.35){me.path.shift();if(!me.path.length){me.path=null;me.goal=null}}else{vx=dx/d;vy=dy/d;want=Math.min(1,d/.8+.25)}}
-  const top=clamp(100/cam.zoom,3,12)*(sprint?1.7:1);
+  const run=sprint&&canSprint(),top=clamp(100/cam.zoom,3,12)*(run?1.7:1)*tiredK();
   me.spd+=clamp(top*want-me.spd,-60*dt,45*dt);
-  if(me.spd>.05&&(vx||vy)){const moved=stepMove(vx*me.spd*dt,vy*me.spd*dt);
-    if(me.path){me.stuck=moved<me.spd*dt*.3?me.stuck+dt:0;if(me.stuck>.7){me.path=null;me.goal=null;me.spd=0}}
+  if(me.spd>.05&&(vx||vy)){const moved=movedNow=stepMove(vx*me.spd*dt,vy*me.spd*dt);
+    if(me.path){me.stuck=moved<me.spd*dt*.3?me.stuck+dt:0;
+      if(me.stuck>(me.hit?3:.7)){   // a wall is final, but traffic and crowds move on: wait, re-plan once, then give up
+        const np=!me.replanned&&me.goal&&findPath(me.x,me.y,me.goal[0],me.goal[1]);
+        if(np){me.path=np;me.stuck=0;me.replanned=true}else{me.path=null;me.goal=null;me.spd=0}}}
     if(me.hit&&me.spd>2.5&&moved<me.spd*dt*.6)bumpInto(me.hit,me.spd);
     const fx=sdir(vx,vy);if(Math.abs(fx)>.05)me.fc=fx>0?1:-1}
   else if(!want)me.spd=Math.max(0,me.spd-60*dt);
+  updStatus(dt,movedNow,run);
   me.vx=vx*me.spd;me.vy=vy*me.spd;if(me.bumpT>0)me.bumpT-=dt;
   pushOut(dt);updYield(dt);honkIfBlocking();
   me.pose=me.spd>.2?'walk':'stand';if(me.pose==='walk')me.ph+=Math.min(me.spd*5.4,14)*dt;

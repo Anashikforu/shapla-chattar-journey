@@ -66,7 +66,7 @@ function render(){
     ctx.globalCompositeOperation='source-over';if(L>.02)lightsPass(items,L);ctx.setTransform(DPR,0,0,DPR,0,0);
   if(rain>.02)drawRain(ctx);
   if(cam.follow&&cam.follow!==me){const f=cam.follow,x=f.fixed?f.x:f.dx,y=f.fixed?f.y:f.dy,s=toScreen(x,y);ctx.beginPath();ctx.ellipse(s[0],s[1],Math.max(10,(f.len||1)*z*.7),Math.max(5,(f.len||1)*z*.35),0,0,TAU);ctx.strokeStyle='#b8432f';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
-  drawLabels(ctx,z);drawBubbles(ctx,z);
+  drawLabels(ctx,z);drawGoalPointer(ctx);drawBubbles(ctx,z);
   if(!grainPat)grainPat=ctx.createPattern(grain,'repeat');ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.55;ctx.fillStyle=grainPat;ctx.fillRect(0,0,W,H);
   ctx.globalAlpha=1;const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(150,130,100,.35)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';
 }

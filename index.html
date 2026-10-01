@@ -28,7 +28,23 @@ body{margin:0;background:var(--paper);color:var(--graphite);font-family:var(--f-
   border-radius:255px 14px 225px 14px/14px 225px 14px 255px;
   box-shadow:2px 3px 0 rgba(47,45,42,.12);padding:10px 14px;z-index:5}
 .note::before{content:"";position:absolute;top:-10px;left:50%;width:70px;height:18px;margin-left:-35px;background:var(--tape);transform:rotate(-3deg);border-radius:2px}
-.title{top:calc(12px + env(safe-area-inset-top,0px));left:14px;transform:rotate(-.8deg);max-width:min(360px,calc(100vw - 28px))}
+.hud{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:14px;z-index:5;display:flex;flex-direction:column;gap:18px;width:min(360px,calc(100vw - 28px));pointer-events:none}
+.hud .note{position:relative;top:auto;left:auto;pointer-events:auto}
+.title{transform:rotate(-.8deg)}
+.status{transform:rotate(.4deg);padding:8px 14px 9px}
+.status p{margin:0;font-size:14px}
+.status .lab{font-size:12px;color:var(--graphite-soft);margin-right:4px}
+.stats{display:flex;align-items:center;gap:12px;margin:5px 0}
+.stat{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;font-size:15px;white-space:nowrap}
+.stat b{font-weight:700;color:var(--lead-red);font-size:16px}
+.stat.grow{flex:1;min-width:0}
+.meter{flex:1;min-width:40px;height:11px;border:1.3px solid var(--graphite);border-radius:8px 3px 8px 3px/3px 8px 3px 8px;overflow:hidden;background:rgba(47,45,42,.06)}
+.meter i{display:block;height:100%;width:100%;background:var(--pencil-blue);opacity:.75;transition:width .4s}
+.meter.low i{background:var(--lead-red)}
+.tired{font-size:12px;color:var(--lead-red);min-width:0}
+.goal{line-height:1.3}
+#goalTxt{color:var(--pencil-blue)}
+#goalDist{color:var(--graphite-soft);font-variant-numeric:tabular-nums}
 .title h1{margin:0;font-weight:400;line-height:1.05;text-wrap:balance}
 .title .bn{font-family:var(--f-bn);font-size:30px;font-weight:600;color:var(--lead-red)}
 .title .en{font-size:17px;color:var(--graphite-soft);margin-left:4px}
@@ -81,7 +97,9 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
   .tools.open{display:flex}
   #toolsToggle{display:block}
   #soundFab{display:block}
-  .title{max-width:calc(100vw - 120px);padding:8px 10px}
+  .hud{width:calc(100vw - 120px);gap:14px}
+  .title{padding:8px 10px}
+  .status{padding:6px 10px 7px}
   .title .bn{font-size:22px}.title .en{font-size:14px}
   .hint{display:none}
   #mini{display:none}
@@ -92,11 +110,20 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 
 <canvas id="scene" aria-label="Live pencil sketch of Shapla Chattar in Motijheel, Dhaka. Walk with WASD or arrow keys, or tap the ground. Drag to pan, scroll to zoom, click a person or vehicle to follow them."></canvas>
 
+<div class="hud">
 <header class="note title">
   <h1><span class="bn">শাপলা চত্বর</span><span class="en">Motijheel, Dhaka</span></h1>
-  <p class="clock"><span class="bn" id="clockBn">সকাল ৮:৩০</span> · <span id="clockEn">8:30 AM</span> <span id="weatherTxt"></span></p>
   <p class="hint">WASD or tap to walk · drag to look around · scroll or pinch to zoom · click anyone to follow</p>
 </header>
+<section class="note status" id="status" aria-label="Your status">
+  <p class="clock"><span class="bn" id="clockBn">সকাল ৮:৩০</span> · <span id="clockEn">8:30 AM</span> <span id="weatherTxt"></span></p>
+  <div class="stats">
+    <span class="stat" title="Wallet"><b>৳</b><span id="wallet">300</span></span>
+    <span class="stat grow" title="Energy"><span class="lab">Energy</span><span class="meter" id="energyBar" role="progressbar" aria-label="Energy" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="energyFill"></i></span><span class="tired" id="energyTxt"></span></span>
+  </div>
+  <p class="goal"><span class="lab">Goal</span> <span id="goalTxt"></span><span id="goalDist"></span></p>
+</section>
+</div>
 
 <button id="toolsToggle" aria-controls="tools" aria-expanded="false">Controls</button>
 <button id="soundFab" aria-pressed="true" aria-label="Turn sound off">Sound: on</button>
@@ -1899,7 +1926,7 @@ function render(){
     ctx.globalCompositeOperation='source-over';if(L>.02)lightsPass(items,L);ctx.setTransform(DPR,0,0,DPR,0,0);
   if(rain>.02)drawRain(ctx);
   if(cam.follow&&cam.follow!==me){const f=cam.follow,x=f.fixed?f.x:f.dx,y=f.fixed?f.y:f.dy,s=toScreen(x,y);ctx.beginPath();ctx.ellipse(s[0],s[1],Math.max(10,(f.len||1)*z*.7),Math.max(5,(f.len||1)*z*.35),0,0,TAU);ctx.strokeStyle='#b8432f';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
-  drawLabels(ctx,z);drawBubbles(ctx,z);
+  drawLabels(ctx,z);drawGoalPointer(ctx);drawBubbles(ctx,z);
   if(!grainPat)grainPat=ctx.createPattern(grain,'repeat');ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.55;ctx.fillStyle=grainPat;ctx.fillRect(0,0,W,H);
   ctx.globalAlpha=1;const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(150,130,100,.35)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';
 }
@@ -1920,7 +1947,7 @@ function buildMini(){const s=mini.width,k=(2*E+40)/s;miniBase=document.createEle
   for(let j=0;j<s;j++)for(let i=0;i<s;i++){const x=(i-s/2)*k,y=(j-s/2)*k,m=cellAt(x,y),col=COL[m>3?0:m],o=(j*s+i)*4;img.data[o]=col[0];img.data[o+1]=col[1];img.data[o+2]=col[2];img.data[o+3]=255}
   c.putImageData(img,0,0);c.setTransform(1/k,0,0,1/k,s/2,s/2);for(const b of buildings){c.fillStyle=b.landmark?'#b8432f':wash(b.parts[0].col,.85);fillPoly(c,b.foot)}}
 function drawMini(){const s=mini.width,k=s/(2*E+40);mctx.setTransform(1,0,0,1,0,0);mctx.drawImage(miniBase,0,0);mctx.setTransform(k,0,0,k,s/2,s/2);
-  mctx.fillStyle='#2f2d2a';for(const v of vehicles)if(!v.parked)mctx.fillRect(v.x-2,v.y-2,4,4);const q=[toWorld(0,0),toWorld(W,0),toWorld(W,H),toWorld(0,H)];mctx.strokeStyle='#b8432f';mctx.lineWidth=3/k;mctx.beginPath();ppath(mctx,q);mctx.stroke();mctx.fillStyle='#b8432f';mctx.beginPath();circ(mctx,me.x,me.y,5/k);mctx.fill();mctx.strokeStyle='#f7f2e6';mctx.lineWidth=1.5/k;mctx.stroke()}
+  mctx.fillStyle='#2f2d2a';for(const v of vehicles)if(!v.parked)mctx.fillRect(v.x-2,v.y-2,4,4);const q=[toWorld(0,0),toWorld(W,0),toWorld(W,H),toWorld(0,H)];mctx.strokeStyle='#b8432f';mctx.lineWidth=3/k;mctx.beginPath();ppath(mctx,q);mctx.stroke();const gp=goalPos();if(gp){mctx.strokeStyle='#b8432f';mctx.lineWidth=2/k;mctx.beginPath();circ(mctx,gp[0],gp[1],9/k);mctx.stroke();mctx.beginPath();circ(mctx,gp[0],gp[1],3/k);mctx.stroke()}mctx.fillStyle='#b8432f';mctx.beginPath();circ(mctx,me.x,me.y,5/k);mctx.fill();mctx.strokeStyle='#f7f2e6';mctx.lineWidth=1.5/k;mctx.stroke()}
 mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect(),k=(2*E+40)/r.width;cam.follow=null;hideCard();cam.tx=(e.clientX-r.left-r.width/2)*k;cam.ty=(e.clientY-r.top-r.height/2)*k-10});
 
 /* ---------------- info card ---------------- */
@@ -1972,7 +1999,7 @@ function boot(){
     if(!PAUSED){acc+=dt;let n=0;while(acc>=1/30&&n<3){step(1/30);acc-=1/30;n++}if(n===3)acc=0}
     if(cam.follow){const f=cam.follow;cam.tx=(f.fixed?f.x:f.dx)+KX;cam.ty=(f.fixed?f.y:f.dy)-KZ}
     cam.tx=clamp(cam.tx,-E-40,E+40);cam.ty=clamp(cam.ty,-E-120,E+40);const k=1-Math.pow(.0015,dt);cam.zoom+=(cam.tz-cam.zoom)*k;cam.x+=(cam.tx-cam.x)*k;cam.y+=(cam.ty-cam.y)*k;
-    render();uiT-=dt;if(uiT<=0){uiT=.4;updateClock();updateCard()}miniT-=dt;if(miniT<=0&&getComputedStyle(mini).display!=='none'){miniT=.2;drawMini()}if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').hidden=true}
+    render();uiT-=dt;if(uiT<=0){uiT=.4;updateClock();updateCard();updateStatusUI()}miniT-=dt;if(miniT<=0&&getComputedStyle(mini).display!=='none'){miniT=.2;drawMini()}if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').hidden=true}
     requestAnimationFrame(frame)}
   requestAnimationFrame(frame);
 }
@@ -2026,7 +2053,7 @@ function updateClock(){const h=Math.floor(HOUR),m=Math.floor((HOUR-h)*60);const 
 
 /* ---------------- save & load (browser storage; safe when unavailable) ---------------- */
 const SAVE_KEY='shapla-journey-v1';
-function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me}))}catch(e){}}
+function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me,stat:{w:Math.round(STAT.wallet),e:+STAT.energy.toFixed(1),g:STAT.goal}}))}catch(e){}}
 function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d||d.v!==1)return false;
   if(typeof d.hour==='number')HOUR=d.hour%24;
   if(d.cam){cam.x=cam.tx=d.cam.x;cam.y=cam.ty=d.cam.y;cam.zoom=cam.tz=clamp(d.cam.z,ZMIN,ZMAX)}
@@ -2037,6 +2064,7 @@ function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)|
   for(let i=0;i<3&&BMODE!==d.bmode;i++)cycleB();
   if(d.sound===false&&soundPref){soundPref=false;syncSoundUI()}
   if(d.me&&typeof d.me.x==='number'&&typeof d.me.y==='number'&&!navAt(d.me.x,d.me.y)){me.x=me.dx=d.me.x;me.y=me.dy=d.me.y}
+  if(d.stat){if(typeof d.stat.w==='number')STAT.wallet=Math.max(0,d.stat.w);if(typeof d.stat.e==='number')STAT.energy=clamp(d.stat.e,0,100);if(Number.isInteger(d.stat.g))STAT.goal=clamp(d.stat.g,0,GOALS.length)}
   if(d.follow===false)cam.follow=null;else{cam.x=cam.tx=me.x+KX;cam.y=cam.ty=me.y-KZ}
   const dir=(d.dir|0)%4,ang=(d.ang|0)%ANGLES.length;
   if(dir!==VIEW.dir||ang!==angIdx){VIEW.dir=dir;VIEW.th=dir*Math.PI/2;angIdx=ang;const a=ANGLES[ang];VIEW.mode=a[0];VIEW.kx0=a[2];VIEW.kz0=a[3];$('btnAngle').textContent='Angle: '+a[1];applyView('Restoring your view…')}
@@ -2087,7 +2115,7 @@ function followMe(){if(cam.follow!==me){cam.follow=me;hideCard()}if(cam.tz<5)cam
 function walkTo(wx,wy){
   const g=nearestFree(wx,wy);if(!g){toast("Can't walk there.");return false}
   const p=findPath(me.x,me.y,g[0],g[1]);if(!p){toast('No way through to there.');return false}
-  me.path=p;me.goal=g;me.stuck=0;followMe();return true}
+  me.path=p;me.goal=g;me.stuck=0;me.replanned=false;followMe();return true}
 
 /* held movement keys (physical positions, so WASD works on any layout) */
 const MKEYS={KeyW:[0,-1],ArrowUp:[0,-1],KeyS:[0,1],ArrowDown:[0,1],KeyA:[-1,0],ArrowLeft:[-1,0],KeyD:[1,0],ArrowRight:[1,0]};
@@ -2147,18 +2175,22 @@ function honkIfBlocking(){   // a vehicle stopped right in front of us leans on 
   for(const v of vehicles){if(v.hx===undefined||v.parked||v.spd>1)continue;const ux=me.x-v.dx,uy=me.y-v.dy;if(ux>9||ux<-9||uy>9||uy<-9)continue;
     const a=ux*v.hx+uy*v.hy,l=-ux*v.hy+uy*v.hx;if(a>0&&a<v.len/2+6&&Math.abs(l)<v.wid/2+1&&v.honkT>1.5)v.honkT=mr(.4,1.4)}}
 function updAvatar(dt){
-  let vx=0,vy=0,want=0;
+  let vx=0,vy=0,want=0,movedNow=0;
   if(heldKeys.size){let sx=0,sy=0;for(const k of heldKeys){sx+=MKEYS[k][0];sy+=MKEYS[k][1]}
     if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;if(cam.follow!==me)followMe()}}
   else if(me.path){const wp=me.path[0],dx=wp[0]-me.x,dy=wp[1]-me.y,d=Math.hypot(dx,dy);
     if(d<.35){me.path.shift();if(!me.path.length){me.path=null;me.goal=null}}else{vx=dx/d;vy=dy/d;want=Math.min(1,d/.8+.25)}}
-  const top=clamp(100/cam.zoom,3,12)*(sprint?1.7:1);
+  const run=sprint&&canSprint(),top=clamp(100/cam.zoom,3,12)*(run?1.7:1)*tiredK();
   me.spd+=clamp(top*want-me.spd,-60*dt,45*dt);
-  if(me.spd>.05&&(vx||vy)){const moved=stepMove(vx*me.spd*dt,vy*me.spd*dt);
-    if(me.path){me.stuck=moved<me.spd*dt*.3?me.stuck+dt:0;if(me.stuck>.7){me.path=null;me.goal=null;me.spd=0}}
+  if(me.spd>.05&&(vx||vy)){const moved=movedNow=stepMove(vx*me.spd*dt,vy*me.spd*dt);
+    if(me.path){me.stuck=moved<me.spd*dt*.3?me.stuck+dt:0;
+      if(me.stuck>(me.hit?3:.7)){   // a wall is final, but traffic and crowds move on: wait, re-plan once, then give up
+        const np=!me.replanned&&me.goal&&findPath(me.x,me.y,me.goal[0],me.goal[1]);
+        if(np){me.path=np;me.stuck=0;me.replanned=true}else{me.path=null;me.goal=null;me.spd=0}}}
     if(me.hit&&me.spd>2.5&&moved<me.spd*dt*.6)bumpInto(me.hit,me.spd);
     const fx=sdir(vx,vy);if(Math.abs(fx)>.05)me.fc=fx>0?1:-1}
   else if(!want)me.spd=Math.max(0,me.spd-60*dt);
+  updStatus(dt,movedNow,run);
   me.vx=vx*me.spd;me.vy=vy*me.spd;if(me.bumpT>0)me.bumpT-=dt;
   pushOut(dt);updYield(dt);honkIfBlocking();
   me.pose=me.spd>.2?'walk':'stand';if(me.pose==='walk')me.ph+=Math.min(me.spd*5.4,14)*dt;
@@ -2185,7 +2217,59 @@ function drawGoalMark(c){   // pencil circle and cross where a tap sent you
   J=mulberry32(11+BOIL);c.beginPath();const ring=[];for(let i=0;i<8;i++){const a=i/8*TAU;ring.push([gx+Math.cos(a)*r,gy+Math.sin(a)*r])}spoly(c,ring,r*.1);sl(c,gx-q,gy-q,gx+q,gy+q,r*.1);sl(c,gx-q,gy+q,gx+q,gy-q,r*.1);
   pencil(c,'#b8432f',.85,1.6);c.stroke();c.globalAlpha=1}
 
+/* ---------------- status bar: wallet, clock, energy, goal ---------------- */
+const STAT={wallet:300,energy:100,goal:0,idle:0,tiredWarned:false};
+const bnTaka=n=>bnNum(Math.round(n));
+function addMoney(n){STAT.wallet=Math.max(0,STAT.wallet+n)}
+function addEnergy(n){STAT.energy=clamp(STAT.energy+n,0,100)}
+const tiredK=()=>STAT.energy>25?1:STAT.energy>0?.75:.5;   // speed factor: tired legs are slow
+const canSprint=()=>STAT.energy>0;
+/* drain by distance (running costs double); rest slowly wins it back */
+function updEnergy(dt,moved,running){
+  if(moved>.01){STAT.idle=0;addEnergy(-moved*.012*(running?2:1))}
+  else{STAT.idle+=dt;if(STAT.idle>.8)addEnergy(dt*.25)}
+  if(STAT.energy<=25&&!STAT.tiredWarned){STAT.tiredWarned=true;toast(STAT.energy<=0?'Exhausted. Stand still for a bit.':'Getting tired. Rest a moment, or find something to eat.')}
+  else if(STAT.energy>40)STAT.tiredWarned=false}
+
+/* goals: walk to a place. Each pays a little, and the pay will buy a meal. */
+const bldCentre=en=>{const b=buildings.find(b=>b.name&&b.name[1]===en);return b?qCenter(b.foot):null};
+const siteCentre=F=>F?FW(F,F.L/2,F.D/2):null;
+const GOALS=[
+ {bn:'শাপলা ফোয়ারার কাছে যান',en:'Walk to the Shapla fountain',at:()=>[0,0],r:24,pay:0},
+ {bn:'বাংলাদেশ ব্যাংকে যান',en:'Walk to Bangladesh Bank',at:()=>bldCentre('Bangladesh Bank'),r:40,pay:100},
+ {bn:'বায়তুল মোকাররমে যান',en:'Walk to Baitul Mukarram mosque',at:()=>siteCentre(sites.baitul),r:55,pay:100},
+ {bn:'কমলাপুর রেল স্টেশনে যান',en:'Walk to Kamalapur railway station',at:()=>siteCentre(sites.kamalapur),r:55,pay:100},
+];
+const goalNow=()=>STAT.goal<GOALS.length?GOALS[STAT.goal]:null;
+function goalPos(){const g=goalNow();return g?g.at():null}
+function updGoal(){
+  const g=goalNow();if(!g)return;const p=g.at();if(!p)return;
+  if(Math.hypot(me.x-p[0],me.y-p[1])<=g.r){STAT.goal++;if(g.pay)addMoney(g.pay);
+    toast(`${LANG==='bn'?g.bn.replace(/যান$/,'পৌঁছেছেন'):'Reached: '+g.en.replace(/^Walk to /,'')}${g.pay?` · +৳${g.pay}`:''}`);
+    if(!goalNow())toast('All goals done for now. Wander freely!')}}
+function updStatus(dt,moved,running){updEnergy(dt,moved,running);updGoal()}
+
+/* DOM */
+function updateStatusUI(){
+  const e=Math.round(STAT.energy);$('wallet').textContent=LANG==='bn'?bnTaka(STAT.wallet):STAT.wallet;
+  $('energyFill').style.width=e+'%';$('energyBar').classList.toggle('low',STAT.energy<=25);$('energyBar').setAttribute('aria-valuenow',e);
+  $('energyTxt').textContent=STAT.energy<=0?'exhausted':STAT.energy<=25?'tired':'';
+  const g=goalNow(),p=g&&g.at();
+  if(!g)$('goalTxt').textContent=LANG==='bn'?'আপাতত সব লক্ষ্য শেষ':'All done for now';
+  else{$('goalTxt').textContent=LANG==='en'?g.en:g.bn;const d=p?Math.max(0,Math.hypot(me.x-p[0],me.y-p[1])-g.r):0;$('goalDist').textContent=p?` · ${Math.round(d/10)*10} m`:''}
+  if(!g)$('goalDist').textContent=''}
+
+/* on-screen pointer to the goal: a bobbing ring when it is in view, an edge arrow when it is not */
+function drawGoalPointer(c){
+  const p=goalPos();if(!p)return;const s=toScreen(p[0],p[1]),b=simT*3,m=36;
+  c.save();c.globalAlpha=.9;c.strokeStyle='#b8432f';c.fillStyle=wash('#b8432f',.75);c.lineWidth=1.8;c.lineCap='round';c.lineJoin='round';J=mulberry32(21+BOIL);
+  if(s[0]>m&&s[0]<W-m&&s[1]>m&&s[1]<H-m){const y=s[1]-14+Math.sin(b)*4;c.beginPath();const tri=[[s[0]-9,y-16],[s[0]+9,y-16],[s[0],y]];ppath(c,tri);c.fill();c.beginPath();spoly(c,tri,1.2);c.stroke();
+    c.beginPath();const ring=[];for(let i=0;i<10;i++){const a=i/10*TAU;ring.push([s[0]+Math.cos(a)*14,s[1]+Math.sin(a)*7])}spoly(c,ring,1.2);c.stroke()}
+  else{const dx=s[0]-W/2,dy=s[1]-H/2,a=Math.atan2(dy,dx),ex=W*.42,ey=H*.4,k=1/Math.sqrt((Math.cos(a)/ex)**2+(Math.sin(a)/ey)**2),x=W/2+Math.cos(a)*k,y=H/2+Math.sin(a)*k,u=[Math.cos(a),Math.sin(a)],n=[-u[1],u[0]],o=Math.sin(b)*3;
+    const tri=[[x+u[0]*(14+o),y+u[1]*(14+o)],[x-u[0]*6+n[0]*10,y-u[1]*6+n[1]*10],[x-u[0]*6-n[0]*10,y-u[1]*6-n[1]*10]];c.beginPath();ppath(c,tri);c.fill();c.beginPath();spoly(c,tri,1.2);c.stroke()}
+  c.restore()}
+
 /* ---------------- test hooks: the whole script lives in an IIFE, so tests reach in through this one handle ---------------- */
-window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople,hitDyn,updYield,bumpInto,bubbles};
+window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople,hitDyn,updYield,bumpInto,bubbles,STAT,GOALS,goalNow,addMoney,updEnergy,goalPos};
 })();
 </script>

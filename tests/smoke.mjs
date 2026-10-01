@@ -71,11 +71,28 @@ const camGap = Math.hypot(a1.cx - a1.x, a1.cy - a1.y);
 console.log(`Avatar keys: moved ${moved.toFixed(1)} m, camera ${camGap.toFixed(1)} m from avatar, following=${a1.follow}`);
 if (moved < 3) errors.push(`avatar did not move with keys (moved ${moved.toFixed(2)} m)`);
 if (!a1.follow || camGap > 8) errors.push('camera is not following the avatar');
-// held 'd' also works on its own
-await page.keyboard.down('d'); await page.keyboard.down('Shift'); await settle(300);
-const run = await page.evaluate(() => window.__journey.me.spd); await page.keyboard.up('Shift'); await page.keyboard.up('d');
-if (!(run > 0)) errors.push('avatar speed is zero while a key is held');
-await page.evaluate(() => { window.__journey.me.spd = 0; });
+// held 'd' also works on its own, and tired legs are slower than fresh ones
+const holdRun = async energy => {
+  await page.evaluate(({ a0, energy }) => { const { me, STAT } = window.__journey; me.x = me.dx = a0.x; me.y = me.dy = a0.y; me.spd = 0; me.path = null; STAT.energy = energy; }, { a0, energy });
+  await page.keyboard.down('d'); await page.keyboard.down('Shift'); await settle(450);
+  const sp = await page.evaluate(() => window.__journey.me.spd); await page.keyboard.up('Shift'); await page.keyboard.up('d'); await settle(100);
+  return sp;
+};
+const fresh = await holdRun(100), tired = await holdRun(0);
+console.log(`Energy: fresh run ${fresh.toFixed(1)} m/s, exhausted ${tired.toFixed(1)} m/s`);
+if (!(fresh > 0)) errors.push('avatar speed is zero while a key is held');
+if (!(tired > 0 && tired < fresh * .7)) errors.push(`exhausted avatar should be much slower (${tired.toFixed(1)} vs ${fresh.toFixed(1)} m/s)`);
+await page.evaluate(() => { const { me, STAT } = window.__journey; me.spd = 0; STAT.energy = 100; });
+// the status bar shows what the game state says, and walking drains energy
+await page.evaluate(() => { window.__journey.STAT.energy = 60; window.__journey.STAT.wallet = 300; });
+await settle(900);
+const ui = await page.evaluate(() => ({ wallet: document.getElementById('wallet').textContent, fill: parseFloat(document.getElementById('energyFill').style.width), goal: document.getElementById('goalTxt').textContent, clock: document.getElementById('clockEn').textContent }));
+console.log(`Status bar: wallet ${ui.wallet}, energy ${ui.fill.toFixed(0)}%, goal "${ui.goal}", clock ${ui.clock}`);
+if (!/300|৩০০/.test(ui.wallet) || ui.fill < 55 || ui.fill > 66 || !ui.goal || !ui.clock) errors.push('status bar does not match game state: ' + JSON.stringify(ui));
+const drain = await page.evaluate(() => { const { STAT, updEnergy } = window.__journey; STAT.energy = 80; for (let i = 0; i < 30; i++) updEnergy(1 / 30, 1, false); const walk = 80 - STAT.energy; STAT.energy = 80; for (let i = 0; i < 30; i++) updEnergy(1 / 30, 1, true); return { walk, run: 80 - STAT.energy }; });
+console.log(`Energy cost of 30 m: walking ${drain.walk.toFixed(2)}, running ${drain.run.toFixed(2)}`);
+if (!(drain.walk > .2 && drain.run > drain.walk * 1.5)) errors.push('walking should cost energy and running more: ' + JSON.stringify(drain));
+await page.evaluate(() => { window.__journey.STAT.energy = 100; });
 // walls: walking at a building from a free cell must stop at the wall
 const wall = await page.evaluate(() => {
   const { me, navAt, nearestFree, stepMove, buildings, qCenter } = window.__journey;
@@ -167,18 +184,32 @@ if (!bodies.vehicle || bodies.vehicle.inside || !bodies.vehicle.isTarget) errors
 if (!bodies.hawker || bodies.hawker.inside || !bodies.hawker.isTarget) errors.push('avatar can walk through a hawker (or never touched one)');
 if (!bodies.yield || bodies.yield.after > .1) errors.push('walkers do not step aside and settle back');
 await page.evaluate(() => { const { me, nearestFree } = window.__journey; const f = nearestFree(me.x, me.y, 60); if (f) { me.x = me.dx = f[0]; me.y = me.dy = f[1]; } me.spd = 0; me.path = null; });
+// goals: reaching a place advances the goal and pays out
+const goals = await page.evaluate(async () => {
+  const { me, STAT, GOALS, nearestFree, goalPos } = window.__journey, wait = ms => new Promise(r => setTimeout(r, ms)), out = [];
+  STAT.goal = 0; STAT.wallet = 300;
+  for (let i = 0; i < 2; i++) {
+    const p = goalPos(), f = nearestFree(p[0], p[1], 60); me.x = me.dx = f[0]; me.y = me.dy = f[1]; me.spd = 0; me.path = null;
+    await wait(500); out.push({ goal: STAT.goal, wallet: STAT.wallet });
+  }
+  await wait(500);
+  return { out, shown: document.getElementById('goalTxt').textContent, next: GOALS[STAT.goal]?.bn };
+});
+console.log(`Goals: ${goals.out.map(o => `goal ${o.goal} wallet ${o.wallet}`).join(' → ')}; shown "${goals.shown}"`);
+if (goals.out[0].goal !== 1 || goals.out[0].wallet !== 300 || goals.out[1].goal !== 2 || goals.out[1].wallet !== 400 || goals.shown !== goals.next) errors.push('goal progression/payout wrong: ' + JSON.stringify(goals));
+await page.evaluate(() => { const { me, STAT, nearestFree } = window.__journey; STAT.wallet = 777; STAT.energy = 64; const f = nearestFree(me.x, me.y, 60); me.x = me.dx = f[0]; me.y = me.dy = f[1]; });
 await step('08-avatar-closeup', () => page.evaluate(() => { window.__journey.cam.tz = 16; }));
 
 // save/load check: change state, reload, confirm it was restored
 await page.evaluate(() => { document.getElementById('btnBld').click(); const s = document.getElementById('timeSlider'); s.value = 15.5; s.dispatchEvent(new Event('input')); });
 await new Promise(r => setTimeout(r, 3500));
-const before = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, x: window.__journey.me.x, y: window.__journey.me.y }));
+const before = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, x: window.__journey.me.x, y: window.__journey.me.y, w: window.__journey.STAT.wallet, e: window.__journey.STAT.energy, g: window.__journey.STAT.goal }));
 await page.reload({ waitUntil: 'load' });
 await page.waitForFunction(() => !document.getElementById('loading'), { timeout: 30000 });
 await new Promise(r => setTimeout(r, 2500));
-const after = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, clock: document.getElementById('clockEn').textContent, x: window.__journey.me.x, y: window.__journey.me.y, follow: window.__journey.cam.follow === window.__journey.me }));
-const saveOk = before.b === after.b && before.f === after.f && /^3:/.test(after.clock) && Math.hypot(before.x - after.x, before.y - after.y) < 1 && after.follow;
-console.log(`Save/load: ${saveOk ? 'restored' : 'NOT restored'} (${after.b}, ${after.f}, ${after.clock}, avatar ${before.x.toFixed(1)},${before.y.toFixed(1)} -> ${after.x.toFixed(1)},${after.y.toFixed(1)}, following=${after.follow})`);
+const after = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, clock: document.getElementById('clockEn').textContent, x: window.__journey.me.x, y: window.__journey.me.y, follow: window.__journey.cam.follow === window.__journey.me, w: window.__journey.STAT.wallet, e: window.__journey.STAT.energy, g: window.__journey.STAT.goal }));
+const saveOk = before.b === after.b && before.f === after.f && /^3:/.test(after.clock) && Math.hypot(before.x - after.x, before.y - after.y) < 1 && after.follow && before.w === after.w && before.g === after.g && Math.abs(before.e - after.e) < 4;
+console.log(`Save/load: ${saveOk ? 'restored' : 'NOT restored'} (${after.b}, ${after.f}, ${after.clock}, avatar ${before.x.toFixed(1)},${before.y.toFixed(1)} -> ${after.x.toFixed(1)},${after.y.toFixed(1)}, following=${after.follow}, wallet ${before.w} -> ${after.w}, energy ${before.e.toFixed(0)} -> ${after.e.toFixed(0)}, goal ${before.g} -> ${after.g})`);
 if (!saveOk) errors.push('save/load did not restore state');
 await browser.close();
 server.close();

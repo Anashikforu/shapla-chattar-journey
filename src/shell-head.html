@@ -28,7 +28,23 @@ body{margin:0;background:var(--paper);color:var(--graphite);font-family:var(--f-
   border-radius:255px 14px 225px 14px/14px 225px 14px 255px;
   box-shadow:2px 3px 0 rgba(47,45,42,.12);padding:10px 14px;z-index:5}
 .note::before{content:"";position:absolute;top:-10px;left:50%;width:70px;height:18px;margin-left:-35px;background:var(--tape);transform:rotate(-3deg);border-radius:2px}
-.title{top:calc(12px + env(safe-area-inset-top,0px));left:14px;transform:rotate(-.8deg);max-width:min(360px,calc(100vw - 28px))}
+.hud{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:14px;z-index:5;display:flex;flex-direction:column;gap:18px;width:min(360px,calc(100vw - 28px));pointer-events:none}
+.hud .note{position:relative;top:auto;left:auto;pointer-events:auto}
+.title{transform:rotate(-.8deg)}
+.status{transform:rotate(.4deg);padding:8px 14px 9px}
+.status p{margin:0;font-size:14px}
+.status .lab{font-size:12px;color:var(--graphite-soft);margin-right:4px}
+.stats{display:flex;align-items:center;gap:12px;margin:5px 0}
+.stat{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums;font-size:15px;white-space:nowrap}
+.stat b{font-weight:700;color:var(--lead-red);font-size:16px}
+.stat.grow{flex:1;min-width:0}
+.meter{flex:1;min-width:40px;height:11px;border:1.3px solid var(--graphite);border-radius:8px 3px 8px 3px/3px 8px 3px 8px;overflow:hidden;background:rgba(47,45,42,.06)}
+.meter i{display:block;height:100%;width:100%;background:var(--pencil-blue);opacity:.75;transition:width .4s}
+.meter.low i{background:var(--lead-red)}
+.tired{font-size:12px;color:var(--lead-red);min-width:0}
+.goal{line-height:1.3}
+#goalTxt{color:var(--pencil-blue)}
+#goalDist{color:var(--graphite-soft);font-variant-numeric:tabular-nums}
 .title h1{margin:0;font-weight:400;line-height:1.05;text-wrap:balance}
 .title .bn{font-family:var(--f-bn);font-size:30px;font-weight:600;color:var(--lead-red)}
 .title .en{font-size:17px;color:var(--graphite-soft);margin-left:4px}
@@ -81,7 +97,9 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
   .tools.open{display:flex}
   #toolsToggle{display:block}
   #soundFab{display:block}
-  .title{max-width:calc(100vw - 120px);padding:8px 10px}
+  .hud{width:calc(100vw - 120px);gap:14px}
+  .title{padding:8px 10px}
+  .status{padding:6px 10px 7px}
   .title .bn{font-size:22px}.title .en{font-size:14px}
   .hint{display:none}
   #mini{display:none}
@@ -92,11 +110,20 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 
 <canvas id="scene" aria-label="Live pencil sketch of Shapla Chattar in Motijheel, Dhaka. Walk with WASD or arrow keys, or tap the ground. Drag to pan, scroll to zoom, click a person or vehicle to follow them."></canvas>
 
+<div class="hud">
 <header class="note title">
   <h1><span class="bn">শাপলা চত্বর</span><span class="en">Motijheel, Dhaka</span></h1>
-  <p class="clock"><span class="bn" id="clockBn">সকাল ৮:৩০</span> · <span id="clockEn">8:30 AM</span> <span id="weatherTxt"></span></p>
   <p class="hint">WASD or tap to walk · drag to look around · scroll or pinch to zoom · click anyone to follow</p>
 </header>
+<section class="note status" id="status" aria-label="Your status">
+  <p class="clock"><span class="bn" id="clockBn">সকাল ৮:৩০</span> · <span id="clockEn">8:30 AM</span> <span id="weatherTxt"></span></p>
+  <div class="stats">
+    <span class="stat" title="Wallet"><b>৳</b><span id="wallet">300</span></span>
+    <span class="stat grow" title="Energy"><span class="lab">Energy</span><span class="meter" id="energyBar" role="progressbar" aria-label="Energy" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><i id="energyFill"></i></span><span class="tired" id="energyTxt"></span></span>
+  </div>
+  <p class="goal"><span class="lab">Goal</span> <span id="goalTxt"></span><span id="goalDist"></span></p>
+</section>
+</div>
 
 <button id="toolsToggle" aria-controls="tools" aria-expanded="false">Controls</button>
 <button id="soundFab" aria-pressed="true" aria-label="Turn sound off">Sound: on</button>
