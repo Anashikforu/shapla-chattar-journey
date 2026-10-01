@@ -330,16 +330,15 @@ else {
     await settle(2200);
     const pt = await page.evaluate(() => {
       const { RESTO, toScreen, peds, vehicles, fixedPeople } = window.__journey, st = RESTO.st;
-            let best = null, bestAny = 0;   // scan the ground around the hotel for the point farthest from anyone
+            let best = null, bestAny = -1;   // scan the ground around the hotel for the point farthest from anyone
       for (let dx = -3; dx <= 3; dx += .6) for (let dy = -3; dy <= 3; dy += .6) {
         const x = RESTO.entry[0] + dx, y = RESTO.entry[1] + dy; if (Math.hypot(x - st.x, y - st.y) > 3.3) continue;
         const s = toScreen(x, y); let clear = 1e9;
         for (const o of [...peds, ...vehicles, ...fixedPeople]) { const p = toScreen(o.dx ?? o.x, o.dy ?? o.y); clear = Math.min(clear, Math.hypot(p[0] - s[0], p[1] - s[1])); }
-        bestAny = Math.max(bestAny, clear);
-        if (clear > 27 && (!best || clear > best.clear)) best = { x: s[0], y: s[1], clear };   // pick() grabs anyone within 22 px
+        if (clear > bestAny) { bestAny = clear; best = { x: s[0], y: s[1], clear }; }   // pick() grabs anyone within 22 px; a crowd at the door may leave no safer spot
       }
       if (best) return best;
-      return { none: true, bestAny, zoom: window.__journey.cam.zoom, follow: window.__journey.who() };
+      return { none: true };
       return null;
     });
     if (pt.none) { console.log('  no clear spot:', JSON.stringify(pt)); continue; }
