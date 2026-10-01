@@ -55,6 +55,7 @@ const VOICE_LINES=[
  ['chase_giveup_1','Passer-by','গেল তো গেলই... ভিড়ের মধ্যে আর এইটা পাইবা না।','Gone is gone... in this crowd you\'ll never find him now.'],
  ['guardian_1','Mother at school gate','এই রাফি! এইদিকে আসো, রোদে যাইও না! টিফিন পুরাটা খাইছো?','Hey Rafi! Come here, don\'t stand in the sun! Did you finish your whole tiffin?'],
  ['pupil_1','School pupil','আম্মু প্লিজ, একটা আইসক্রিম কিনে দাও না! অনেক গরম লাগতেছে!','Ammu please, buy me an ice cream! It\'s so hot!'],
+ ['hotel_welcome_1','Hotel boy','আসেন ভাই, বসেন! গরম ভাত, কাচ্চি, কালা ভুনা আছে! কী খাবেন?','Come in, bhai, sit down! Hot rice, kacchi, kala bhuna! What will you have?'],
  ['bump_1','Man you bumped into','আরে ভাই, দেখে হাঁটেন! ধাক্কা দিলেন তো!','Hey bhai, watch where you walk! You bumped right into me!'],
  ['bump_2','Woman you bumped into','উফ! সামনে দেখে চলেন না ভাই, এত তাড়া কীসের!','Oof! Look ahead when you walk bhai, what\'s the big hurry!'],
  ['phone_1','Woman on phone','হ্যাঁ আম্মা, শুনতেছো? বেতন পাইছি আম্মা, বিকাশে টাকা পাঠায়া দিতাছি। শরীর ভালো তো তোমার?','Yes Amma, can you hear me? I got my salary Amma, sending money by bKash. Are you feeling alright?'],

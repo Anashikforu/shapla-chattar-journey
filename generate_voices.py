@@ -17,7 +17,7 @@ Features:
 - Supports single line generation (--line <id>), multiple takes (--takes <n>), and --dry-run.
 
 Usage:
-  # Dry run to inspect all 58 lines, styles, and character voices:
+  # Dry run to inspect all 59 lines, styles, and character voices:
   python3 generate_voices.py --dry-run
 
   # Generate all voices using prebuilt voices:
@@ -899,6 +899,18 @@ LINES = [
             "AUDIO PROFILE: Commuter stuck in car/CNG, 34. "
             "THE SCENE: Sitting in deadlocked traffic at the roundabout. "
             "DIRECTOR'S NOTES: Exasperated sigh turning into half-amused laughter, classic Dhaka patience."
+        ),
+    },
+    {
+        "id": "hotel_welcome_1",
+        "voice": "V_WATER",
+        "display_bn": "আসেন ভাই, বসেন! গরম ভাত, কাচ্চি, কালা ভুনা আছে! কী খাবেন?",
+        "tts_text": "আসেন ভাই, বসেন! গরম ভাত, কাচ্চি, কালা ভুনা আছে! কী খাবেন?",
+        "en": "Come in, bhai, sit down! Hot rice, kacchi, kala bhuna! What will you have?",
+        "style": (
+            "AUDIO PROFILE: Hotel boy, 15. "
+            "THE SCENE: Inside Mayer Doa Hotel, plates clattering, steam rising from the pots. "
+            "DIRECTOR'S NOTES: Cheerful, quick and friendly, calling over the clatter."
         ),
     },
     {

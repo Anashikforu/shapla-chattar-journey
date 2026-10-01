@@ -155,6 +155,12 @@ Generate every line below. The Bangla script is what the model should read. The 
 | `player_pass_1` | V_TEEN | পাস দে! পাস দে! | Pass de! Pass de! | Pass it! Pass it! | `[shouting]` Across the club ground, breathless. |
 | `player_goal_1` | V_TEEN | গোওওল! | Gooool! | Goooal! | `[shouting]` Long joyful cry. 2 takes. |
 
+### Inside the hotel
+
+| ID | Voice | Bangla | Romanised | English | Delivery |
+|---|---|---|---|---|---|
+| `hotel_welcome_1` | V_WATER | আসেন ভাই, বসেন! গরম ভাত, কাচ্চি, কালা ভুনা আছে! কী খাবেন? | Asen bhai, boshen! Gorom bhat, kacchi, kala bhuna ache! Ki khaben? | Come in, bhai, sit down! Hot rice, kacchi, kala bhuna! What will you have? | `[cheerful]` Quick, friendly, a boy calling over the clatter of plates. |
+
 ### Bumping into people
 
 | ID | Voice | Bangla | Romanised | English | Delivery |
@@ -209,7 +215,7 @@ Generate every line below. The Bangla script is what the model should read. The 
 ## 8. Checklist
 
 - [ ] 16 voices designed (section 4)
-- [ ] 58 lines generated, with 2–3 takes for hawker calls and helper shouts
+- [ ] 59 lines generated, with 2–3 takes for hawker calls and helper shouts
 - [ ] 9 SFX and 3 ambience loops (`amb_azan` optional, real recording only)
 - [ ] Files named exactly by ID, trimmed, levelled
 - [ ] Dropped into the scene with **Voices**, or listed in `voices/voices.js`

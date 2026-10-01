@@ -105,7 +105,7 @@ function honkIfBlocking(){   // a vehicle stopped right in front of us leans on 
 function updAvatar(dt){
   let vx=0,vy=0,want=0,movedNow=0;
   if(heldKeys.size){let sx=0,sy=0;for(const k of heldKeys){sx+=MKEYS[k][0];sy+=MKEYS[k][1]}
-    if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;if(cam.follow!==me)followMe()}}
+    if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;me.enterOnArrive=false;if(cam.follow!==me)followMe()}}
   else if(me.path){const wp=me.path[0],dx=wp[0]-me.x,dy=wp[1]-me.y,d=Math.hypot(dx,dy);
     if(d<.35){me.path.shift();if(!me.path.length){me.path=null;me.goal=null}}else{vx=dx/d;vy=dy/d;want=Math.min(1,d/.8+.25)}}
   const run=sprint&&canSprint(),top=clamp(100/cam.zoom,3,12)*(run?1.7:1)*tiredK();
@@ -121,6 +121,8 @@ function updAvatar(dt){
   updStatus(dt,movedNow,run);
   me.vx=vx*me.spd;me.vy=vy*me.spd;if(me.bumpT>0)me.bumpT-=dt;
   pushOut(dt);updYield(dt);honkIfBlocking();
+  if(me.enterOnArrive&&!me.path){me.enterOnArrive=false;if(restoState()===1)enterRestaurant()}
+  syncEnterBtn();
   me.pose=me.spd>.2?'walk':'stand';if(me.pose==='walk')me.ph+=Math.min(me.spd*5.4,14)*dt;
   const k=Math.min(1,dt*20);me.dx+=(me.x-me.dx)*k;me.dy+=(me.y-me.dy)*k;
 }

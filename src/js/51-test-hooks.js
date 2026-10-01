@@ -1,3 +1,3 @@
 
 /* ---------------- test hooks: the whole script lives in an IIFE, so tests reach in through this one handle ---------------- */
-window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople,hitDyn,updYield,bumpInto,bubbles,STAT,GOALS,goalNow,addMoney,updEnergy,goalPos};
+window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople,hitDyn,updYield,bumpInto,bubbles,STAT,GOALS,goalNow,addMoney,updEnergy,goalPos,RESTO,MENU,enterRestaurant,leaveRestaurant,restoState,cellAt,hour:()=>HOUR,inside:()=>INSIDE,who:()=>cam.follow&&(cam.follow.name||(cam.follow.T&&cam.follow.T.en)||'?')+(cam.follow.stall?' (stall hawker)':'')};

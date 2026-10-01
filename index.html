@@ -92,11 +92,28 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 #toast::before{display:none}
 #loading{position:fixed;inset:0;display:grid;place-items:center;z-index:20;background:var(--paper);font-size:22px;color:var(--graphite-soft);pointer-events:none;transition:opacity .6s}
 #loading.done{opacity:0}
+#btnEnter{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--paper-note);font-size:15px;padding:7px 16px;box-shadow:2px 3px 0 rgba(47,45,42,.12);max-width:calc(100vw - 28px)}
+#btnEnter:disabled{opacity:.75;cursor:default}
+#inside{position:fixed;inset:0;z-index:4;background:var(--paper)}
+#room{position:absolute;inset:0;width:100%;height:100%;display:block}
+body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display:none!important}
+.menu{left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) rotate(-.3deg);width:min(660px,calc(100vw - 28px));max-height:44vh;overflow:auto}
+.menu h2{margin:0;font-size:20px;font-weight:700;line-height:1.1}
+.menu h2 .bn{font-family:var(--f-bn);font-weight:600;color:var(--lead-red);margin-right:8px}
+.menu .sub{margin:2px 0 8px;font-size:13px;color:var(--graphite-soft)}
+.dishes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.dish{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;padding:5px 10px}
+.dish .bn{font-family:var(--f-bn);font-weight:600}
+.dish small{color:var(--graphite-soft);font-size:12px}
+.dish .dp{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--lead-red)}
+.dish:disabled{opacity:.5;cursor:default}
 @media (max-width:640px){
   .tools{display:none;top:calc(56px + env(safe-area-inset-top,0px));width:min(260px,calc(100vw - 28px))}
   .tools.open{display:flex}
   #toolsToggle{display:block}
   #soundFab{display:block}
+  .dishes{grid-template-columns:1fr}
+  .menu{max-height:48vh}
   .hud{width:calc(100vw - 120px);gap:14px}
   .title{padding:8px 10px}
   .status{padding:6px 10px 7px}
@@ -162,6 +179,18 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
     <span style="font-size:12px;align-self:center;text-align:center;color:var(--graphite-soft)">Shift to run</span>
   </div>
 </aside>
+
+<button id="btnEnter" hidden></button>
+
+<section id="inside" hidden aria-label="Inside Mayer Doa Hotel">
+  <canvas id="room" aria-label="Pencil sketch of the inside of Mayer Doa Hotel: a counter with steaming pots, long wooden tables, a menu board."></canvas>
+  <div class="note menu" id="menu">
+    <h2 id="menuTitle"></h2>
+    <p class="sub" id="menuSub"></p>
+    <div class="dishes" id="dishes"></div>
+    <button id="btnLeave">Leave (Esc)</button>
+  </div>
+</section>
 
 <section class="note card" id="card" hidden aria-live="polite">
   <h2 id="cardName"></h2>
@@ -351,6 +380,7 @@ const VOICE_LINES=[
  ['chase_giveup_1','Passer-by','গেল তো গেলই... ভিড়ের মধ্যে আর এইটা পাইবা না।','Gone is gone... in this crowd you\'ll never find him now.'],
  ['guardian_1','Mother at school gate','এই রাফি! এইদিকে আসো, রোদে যাইও না! টিফিন পুরাটা খাইছো?','Hey Rafi! Come here, don\'t stand in the sun! Did you finish your whole tiffin?'],
  ['pupil_1','School pupil','আম্মু প্লিজ, একটা আইসক্রিম কিনে দাও না! অনেক গরম লাগতেছে!','Ammu please, buy me an ice cream! It\'s so hot!'],
+ ['hotel_welcome_1','Hotel boy','আসেন ভাই, বসেন! গরম ভাত, কাচ্চি, কালা ভুনা আছে! কী খাবেন?','Come in, bhai, sit down! Hot rice, kacchi, kala bhuna! What will you have?'],
  ['bump_1','Man you bumped into','আরে ভাই, দেখে হাঁটেন! ধাক্কা দিলেন তো!','Hey bhai, watch where you walk! You bumped right into me!'],
  ['bump_2','Woman you bumped into','উফ! সামনে দেখে চলেন না ভাই, এত তাড়া কীসের!','Oof! Look ahead when you walk bhai, what\'s the big hurry!'],
  ['phone_1','Woman on phone','হ্যাঁ আম্মা, শুনতেছো? বেতন পাইছি আম্মা, বিকাশে টাকা পাঠায়া দিতাছি। শরীর ভালো তো তোমার?','Yes Amma, can you hear me? I got my salary Amma, sending money by bKash. Are you feeling alright?'],
@@ -1729,7 +1759,7 @@ function pick(sx,sy){
   const test=(o,x,y,z)=>{const s=toScreen(x+KX*z,y-KZ*z),d=Math.hypot(s[0]-sx,s[1]-sy);if(d<bd){bd=d;best=o}};
   if(cam.zoom>1.4){for(const p of peds)if(onScreen(p.dx,p.dy))test(p,p.dx,p.dy,.9);for(const f of fixedPeople)if(!f.hidden&&onScreen(f.x,f.y))test(f,f.x,f.y,.8)}
   for(const v of vehicles)if(onScreen(v.dx,v.dy))test(v,v.dx,v.dy,1);
-  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else{unfollow();const w=toWorld(sx,sy);walkTo(w[0],w[1])}
+  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else{unfollow();const w=toWorld(sx,sy);if(!tapRestaurant(w[0],w[1]))walkTo(w[0],w[1])}
 }
 function follow(o){cam.follow=o;if(cam.tz<9)cam.tz=10;showCard(o)}
 document.getElementById('btnFollow').onclick=()=>{
@@ -1926,7 +1956,7 @@ function render(){
     ctx.globalCompositeOperation='source-over';if(L>.02)lightsPass(items,L);ctx.setTransform(DPR,0,0,DPR,0,0);
   if(rain>.02)drawRain(ctx);
   if(cam.follow&&cam.follow!==me){const f=cam.follow,x=f.fixed?f.x:f.dx,y=f.fixed?f.y:f.dy,s=toScreen(x,y);ctx.beginPath();ctx.ellipse(s[0],s[1],Math.max(10,(f.len||1)*z*.7),Math.max(5,(f.len||1)*z*.35),0,0,TAU);ctx.strokeStyle='#b8432f';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
-  drawLabels(ctx,z);drawGoalPointer(ctx);drawBubbles(ctx,z);
+  drawLabels(ctx,z);drawRestaurantLabel(ctx,z);drawGoalPointer(ctx);drawBubbles(ctx,z);
   if(!grainPat)grainPat=ctx.createPattern(grain,'repeat');ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.55;ctx.fillStyle=grainPat;ctx.fillRect(0,0,W,H);
   ctx.globalAlpha=1;const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(150,130,100,.35)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';
 }
@@ -1984,22 +2014,22 @@ $('cardClose').onclick=()=>unfollow();
 /* ---------------- boot ---------------- */
 function boot(){
   genRoads();genMask();genZebras();hatchImg=makeHatch();hatchPat=ctx.createPattern(hatchImg,'repeat');
-  genBuildings();genWalks();genTrees();genPoles();genStalls();genStops();genPolice();genCounters();genBridges();genUnipoles();genMetro();genRoutes();genStands();genSpawners();genAnimals();
+  genBuildings();genWalks();genTrees();genPoles();genStalls();genStops();genPolice();genCounters();genBridges();genUnipoles();genRestaurant();genMetro();genRoutes();genStands();genSpawners();genAnimals();
   buildGroundSprite();buildMini();
   for(let i=0;i<pedTarget();i++)spawnPed(true);
   grid.clear();for(const o of staticObs)gridAdd(o);for(const v of vehicles)gridAdd(v);seedTraffic();
   for(let k=0;k<260;k++){spawnVehicles(.2);grid.clear();for(const v of vehicles)gridAdd(v);for(const o of staticObs)gridAdd(o);for(const v of vehicles)updVehicle(v,.2);for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead)vehicles.splice(i,1);phaseT+=.2;if(phaseT>=PHASE_LEN){phaseT=0;phase=1-phase}}
   for(const v of vehicles){v.dx=v.x;v.dy=v.y}bubbles.length=0;events.length=0;
   for(const b of buildings)makeSprite(b);
-  initAvatar();
+  initAvatar();initRestaurantEntry();
   simT=0;updateVoiceUI();loadBundled();
   $('loading').classList.add('done');setTimeout(()=>$('loading').remove(),700);
   let last=performance.now(),acc=0,uiT=0,miniT=0;
   function frame(now){let dt=Math.min(.1,(now-last)/1000);last=now;
-    if(!PAUSED){acc+=dt;let n=0;while(acc>=1/30&&n<3){step(1/30);acc-=1/30;n++}if(n===3)acc=0}
+    if(!PAUSED&&!INSIDE){acc+=dt;let n=0;while(acc>=1/30&&n<3){step(1/30);acc-=1/30;n++}if(n===3)acc=0}
     if(cam.follow){const f=cam.follow;cam.tx=(f.fixed?f.x:f.dx)+KX;cam.ty=(f.fixed?f.y:f.dy)-KZ}
     cam.tx=clamp(cam.tx,-E-40,E+40);cam.ty=clamp(cam.ty,-E-120,E+40);const k=1-Math.pow(.0015,dt);cam.zoom+=(cam.tz-cam.zoom)*k;cam.x+=(cam.tx-cam.x)*k;cam.y+=(cam.ty-cam.y)*k;
-    render();uiT-=dt;if(uiT<=0){uiT=.4;updateClock();updateCard();updateStatusUI()}miniT-=dt;if(miniT<=0&&getComputedStyle(mini).display!=='none'){miniT=.2;drawMini()}if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').hidden=true}
+    if(INSIDE)drawRoom(dt);else render();uiT-=dt;if(uiT<=0){uiT=.4;updateClock();updateCard();updateStatusUI()}miniT-=dt;if(!INSIDE&&miniT<=0&&getComputedStyle(mini).display!=='none'){miniT=.2;drawMini()}if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').hidden=true}
     requestAnimationFrame(frame)}
   requestAnimationFrame(frame);
 }
@@ -2053,7 +2083,7 @@ function updateClock(){const h=Math.floor(HOUR),m=Math.floor((HOUR-h)*60);const 
 
 /* ---------------- save & load (browser storage; safe when unavailable) ---------------- */
 const SAVE_KEY='shapla-journey-v1';
-function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me,stat:{w:Math.round(STAT.wallet),e:+STAT.energy.toFixed(1),g:STAT.goal}}))}catch(e){}}
+function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me,stat:{w:Math.round(STAT.wallet),e:+STAT.energy.toFixed(1),g:STAT.goal,a:STAT.ate}}))}catch(e){}}
 function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d||d.v!==1)return false;
   if(typeof d.hour==='number')HOUR=d.hour%24;
   if(d.cam){cam.x=cam.tx=d.cam.x;cam.y=cam.ty=d.cam.y;cam.zoom=cam.tz=clamp(d.cam.z,ZMIN,ZMAX)}
@@ -2064,7 +2094,7 @@ function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)|
   for(let i=0;i<3&&BMODE!==d.bmode;i++)cycleB();
   if(d.sound===false&&soundPref){soundPref=false;syncSoundUI()}
   if(d.me&&typeof d.me.x==='number'&&typeof d.me.y==='number'&&!navAt(d.me.x,d.me.y)){me.x=me.dx=d.me.x;me.y=me.dy=d.me.y}
-  if(d.stat){if(typeof d.stat.w==='number')STAT.wallet=Math.max(0,d.stat.w);if(typeof d.stat.e==='number')STAT.energy=clamp(d.stat.e,0,100);if(Number.isInteger(d.stat.g))STAT.goal=clamp(d.stat.g,0,GOALS.length)}
+  if(d.stat){if(typeof d.stat.w==='number')STAT.wallet=Math.max(0,d.stat.w);if(typeof d.stat.e==='number')STAT.energy=clamp(d.stat.e,0,100);STAT.ate=!!d.stat.a;if(Number.isInteger(d.stat.g))STAT.goal=clamp(d.stat.g,0,GOALS.length)}
   if(d.follow===false)cam.follow=null;else{cam.x=cam.tx=me.x+KX;cam.y=cam.ty=me.y-KZ}
   const dir=(d.dir|0)%4,ang=(d.ang|0)%ANGLES.length;
   if(dir!==VIEW.dir||ang!==angIdx){VIEW.dir=dir;VIEW.th=dir*Math.PI/2;angIdx=ang;const a=ANGLES[ang];VIEW.mode=a[0];VIEW.kx0=a[2];VIEW.kz0=a[3];$('btnAngle').textContent='Angle: '+a[1];applyView('Restoring your view…')}
@@ -2177,7 +2207,7 @@ function honkIfBlocking(){   // a vehicle stopped right in front of us leans on 
 function updAvatar(dt){
   let vx=0,vy=0,want=0,movedNow=0;
   if(heldKeys.size){let sx=0,sy=0;for(const k of heldKeys){sx+=MKEYS[k][0];sy+=MKEYS[k][1]}
-    if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;if(cam.follow!==me)followMe()}}
+    if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;me.enterOnArrive=false;if(cam.follow!==me)followMe()}}
   else if(me.path){const wp=me.path[0],dx=wp[0]-me.x,dy=wp[1]-me.y,d=Math.hypot(dx,dy);
     if(d<.35){me.path.shift();if(!me.path.length){me.path=null;me.goal=null}}else{vx=dx/d;vy=dy/d;want=Math.min(1,d/.8+.25)}}
   const run=sprint&&canSprint(),top=clamp(100/cam.zoom,3,12)*(run?1.7:1)*tiredK();
@@ -2193,6 +2223,8 @@ function updAvatar(dt){
   updStatus(dt,movedNow,run);
   me.vx=vx*me.spd;me.vy=vy*me.spd;if(me.bumpT>0)me.bumpT-=dt;
   pushOut(dt);updYield(dt);honkIfBlocking();
+  if(me.enterOnArrive&&!me.path){me.enterOnArrive=false;if(restoState()===1)enterRestaurant()}
+  syncEnterBtn();
   me.pose=me.spd>.2?'walk':'stand';if(me.pose==='walk')me.ph+=Math.min(me.spd*5.4,14)*dt;
   const k=Math.min(1,dt*20);me.dx+=(me.x-me.dx)*k;me.dy+=(me.y-me.dy)*k;
 }
@@ -2217,8 +2249,148 @@ function drawGoalMark(c){   // pencil circle and cross where a tap sent you
   J=mulberry32(11+BOIL);c.beginPath();const ring=[];for(let i=0;i<8;i++){const a=i/8*TAU;ring.push([gx+Math.cos(a)*r,gy+Math.sin(a)*r])}spoly(c,ring,r*.1);sl(c,gx-q,gy-q,gx+q,gy+q,r*.1);sl(c,gx-q,gy+q,gx+q,gy-q,r*.1);
   pencil(c,'#b8432f',.85,1.6);c.stroke();c.globalAlpha=1}
 
+/* ---------------- Mayer Doa Hotel: the first place you can walk into ---------------- */
+let INSIDE=false;
+const RESTO={st:null,entry:null,name:['মায়ের দোয়া হোটেল','Mayer Doa Hotel']};
+const L2=(bn,en)=>LANG==='en'?en:LANG==='both'?`${bn} · ${en}`:bn;
+const MENU=[
+ {id:'rice',bn:'ভাত, ডাল, ভর্তা',en:'Rice, dal and bhorta',price:80,gain:35,min:20,meal:true},
+ {id:'chicken',bn:'মুরগির ঝোল, ভাত',en:'Chicken curry and rice',price:140,gain:50,min:25,meal:true},
+ {id:'kala',bn:'গরুর কালা ভুনা, পরোটা',en:'Beef kala bhuna and paratha',price:120,gain:45,min:20,meal:true},
+ {id:'kacchi',bn:'কাচ্চি বিরিয়ানি',en:'Kacchi biryani',price:220,gain:75,min:30,meal:true},
+ {id:'tea',bn:'দুধ চা',en:'Milk tea',price:10,gain:8,min:5,meal:false},
+];
+/* the hotel replaces whatever stalls stood on the footpath nearest the first view, in a gap clear of trees and poles */
+function genRestaurant(){
+  let best=null;
+  for(const P of walks){if(P.closed||P.side===0||P.road<0)continue;const[s,d]=nearestS(P,0,-22);if(!best||d<best.d)best={P,s,d}}
+  if(!best)return;const P=best.P;
+  for(let k=0;k<40;k++){
+    const s=best.s+(k%2?1:-1)*Math.ceil(k/2)*3;if(s<8||s>P.len-8)continue;const o=[];walkPos(P,s,0,o);
+    if(Math.hypot(o[0],o[1])<RSW+4||!inWorld(o[0],o[1],-12))continue;
+    if(trees.some(t=>t.walk===P.id&&Math.abs(t.s-s)<4.5)||poles.some(p=>Math.hypot(p.x-o[0],p.y-o[1])<3.5))continue;
+    for(let i=P.stalls.length-1;i>=0;i--)if(Math.abs(P.stalls[i].s-s)<6.5){P.stalls[i].dead=true;P.stalls.splice(i,1)}
+    mkStall('hotel',P,s);const st=stalls[stalls.length-1];st.name=RESTO.name;st.hawker.roleText='Cook and owner of Mayer Doa Hotel';st.hawker.years=24;
+    for(let i=stalls.length-1;i>=0;i--)if(stalls[i].dead){const j=fixedPeople.indexOf(stalls[i].hawker);if(j>=0)fixedPeople.splice(j,1);stalls.splice(i,1)}
+    P.stalls.sort((a,b)=>a.s-b.s);RESTO.st=st;return}
+}
+function initRestaurantEntry(){const st=RESTO.st;if(st)RESTO.entry=nearestFree(st.sx,st.sy,6)}   // needs the nav grid
+/* 0 = out of reach, 1 = can walk in, 2 = closed */
+function restoState(){const st=RESTO.st;if(!st||!RESTO.entry||INSIDE)return 0;if(Math.hypot(me.x-st.x,me.y-st.y)>4.5)return 0;return st.open?1:2}
+let enterLabel='';
+function syncEnterBtn(){const rs=restoState(),b=$('btnEnter');
+  if(!rs){if(!b.hidden)b.hidden=true;return}
+  const t=rs===1?L2('ঢুকুন: মায়ের দোয়া হোটেল (Enter)','Enter Mayer Doa Hotel (Enter)'):L2('মায়ের দোয়া হোটেল এখন বন্ধ, খুলবে সকাল ৬টায়','Mayer Doa Hotel is closed, opens at 6 AM');
+  if(t!==enterLabel){enterLabel=t;b.textContent=t}b.disabled=rs!==1;if(b.hidden)b.hidden=false}
+function tapRestaurant(x,y){const st=RESTO.st;if(!st||Math.hypot(x-st.x,y-st.y)>3.6)return false;
+  const rs=restoState();if(rs===1){enterRestaurant();return true}if(rs===2){toast(L2('হোটেল এখন বন্ধ।','The hotel is closed right now.'));return true}
+  if(!walkTo(RESTO.entry[0],RESTO.entry[1]))return true;me.enterOnArrive=true;return true}
+function drawRestaurantLabel(c,z){   // name on the map while zoomed out; up close it is on the sign
+  const st=RESTO.st;if(!st||z>=7||!onScreen(st.x,st.y))return;const s=toScreen(st.x+KX*3,st.y-KZ*3),px=clamp(10+z*1.6,11,15);
+  c.save();c.textAlign='center';c.textBaseline='middle';c.font=`600 ${px}px ${F_BN}`;c.lineWidth=4;c.strokeStyle='rgba(247,242,230,.9)';const t=LANG==='en'?RESTO.name[1]:RESTO.name[0];c.strokeText(t,s[0],s[1]);c.fillStyle=INK;c.fillText(t,s[0],s[1]);c.restore()}
+
+/* walking in and out */
+let simT0=0;const eating={dish:null,t:0};
+function enterRestaurant(){
+  if(INSIDE||restoState()!==1)return;INSIDE=true;simT0=simT;heldKeys.clear();me.path=null;me.goal=null;me.spd=0;me.enterOnArrive=false;eating.dish=null;
+  hideCard();document.body.classList.add('inside');$('inside').hidden=false;$('btnEnter').hidden=true;buildMenu();roomEnter();
+  playVoice('hotel_welcome_1',me.x,me.y,1)}
+function leaveRestaurant(){
+  if(!INSIDE||eating.dish)return;INSIDE=false;simT=simT0;document.body.classList.remove('inside');$('inside').hidden=true;heldKeys.clear();syncEnterBtn()}
+function buildMenu(){
+  $('menuTitle').innerHTML=`<span class="bn">${RESTO.name[0]}</span>${RESTO.name[1]}`;
+  $('dishes').innerHTML=MENU.map((m,i)=>`<button class="dish" data-i="${i}"><span class="dn"><span class="bn">${m.bn}</span> <small>${m.en}</small></span><span class="dp">৳${m.price}<small> +${m.gain}</small></span></button>`).join('');
+  for(const b of $('dishes').querySelectorAll('.dish'))b.onclick=()=>orderDish(+b.dataset.i);syncMenu()}
+function menuNote(m){return eating.dish?L2('খাচ্ছেন…','Eating…'):STAT.wallet<m.price?L2('টাকা কম','Not enough taka'):m.meal&&STAT.energy>=97?L2('এখন খিদে নেই','Not hungry'):''}
+function syncMenu(){
+  $('menuSub').textContent=L2('খাবার বেছে নিন। দাম টাকায়, পাশে শক্তি।','Pick something. Price in taka, then the energy it gives.');
+  $('btnLeave').disabled=!!eating.dish;
+  for(const b of $('dishes').querySelectorAll('.dish')){const m=MENU[+b.dataset.i],why=menuNote(m);b.disabled=!!why;b.title=why}}
+function orderDish(i){
+  const m=MENU[i];if(!INSIDE||menuNote(m))return;
+  addMoney(-m.price);eating.dish=m;eating.t=0;roomSay(L2('নেন ভাই, গরম গরম!','Here you go, bhai, piping hot!'));syncMenu();updateStatusUI()}
+function finishEating(){
+  const m=eating.dish;eating.dish=null;addEnergy(m.gain);HOUR=(HOUR+m.min/60)%24;if(m.meal)STAT.ate=true;
+  toast(L2(`${m.bn} খেলেন · শক্তি +${m.gain}`,`Ate ${m.en.toLowerCase()} · +${m.gain} energy`));roomSay(L2('আবার আসবেন ভাই!','Come again, bhai!'));syncMenu();updateStatusUI()}
+
+$('btnEnter').onclick=enterRestaurant;$('btnLeave').onclick=leaveRestaurant;
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&INSIDE){leaveRestaurant();return}
+  if(e.key==='Enter'&&!INSIDE&&!['INPUT','BUTTON','TEXTAREA','SELECT','A'].includes(e.target.tagName)&&restoState()===1)enterRestaurant()});
+
+/* ---------------- inside the hotel: a pencil-sketched room, drawn live like the street ---------------- */
+const roomCv=document.getElementById('room'),rctx=roomCv.getContext('2d');
+const ROOM={t:0,k:20,oy:0,cook:null,crowd:[],roomMe:null,say:'',sayT:0};
+function roomSay(t){ROOM.say=t;ROOM.sayT=4}
+function roomEnter(){
+  ROOM.t=0;ROOM.cook=makePerson('hawker',false);Object.assign(ROOM.cook.look,{dress:'lungi',c1:'#f1eee6',c2:'#3f5f8a',cap:true});Object.assign(ROOM.cook,{fixed:true,act:'serve',pose:'stand',fc:1});
+  ROOM.crowd=[[0,-3.6,1,'labour'],[1,-2.4,-1,'office'],[2,4.6,1,'student'],[3,6.2,-1,'customer']].map(([i,x,fc,role])=>{const p=makePerson(role,false);Object.assign(p,{fixed:true,pose:'sit',fc,ph:i});p.rx=x;return p});
+  ROOM.roomMe={look:me.look,fixed:true,pose:'sit',fc:1,ph:0,act:null};
+  roomSay(L2('আসেন ভাই, বসেন! কী খাবেন?','Come in, bhai, sit down! What will you have?'))}
+const RT=(c,x,y,str,m,col,align='left',font=F_BN,weight='')=>{c.save();c.setTransform(DPR,0,0,DPR,0,0);c.font=`${weight} ${(m*ROOM.k).toFixed(1)}px ${font}`;c.fillStyle=col;c.textAlign=align;c.textBaseline='middle';c.fillText(str,W/2+x*ROOM.k,ROOM.oy+y*ROOM.k);c.restore()};
+const RTW=(c,str,m,font=F_BN)=>{c.save();c.setTransform(DPR,0,0,DPR,0,0);c.font=`${(m*ROOM.k).toFixed(1)}px ${font}`;const w=c.measureText(str).width/ROOM.k;c.restore();return w};
+function fig(c,p,x,y){const k1=KX,k2=KZ;KX=0;KZ=1;try{drawPerson0(c,p,x,y,3,{noUmb:true})}finally{KX=k1;KZ=k2}}
+function rpoly(c,pts,fill,ink,seed,j=.04,a=.8,w=1.1){J=mulberry32(seed+BOIL);if(fill){c.fillStyle=fill;c.globalAlpha=1;fillPoly(c,pts)}if(ink){c.beginPath();spoly(c,pts,j);pencil(c,ink,a,w);c.stroke();c.globalAlpha=1}}
+const rrect=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
+function steam(c,x,y,n,h,seed){c.beginPath();for(let i=0;i<n;i++){const ph=ROOM.t*1.6+i*2.1+seed;c.moveTo(x+(i-(n-1)/2)*.16,y);for(let s=1;s<=8;s++){const f=s/8;c.lineTo(x+(i-(n-1)/2)*.16+Math.sin(ph+f*4)*.1*f,y-f*h)}}pencil(c,INK2,.32,1);c.stroke();c.globalAlpha=1}
+function dishArt(c,m,x,y){   // what is on the plate, drawn on the table top at (x,y)
+  c.globalAlpha=1;c.fillStyle='#f4f1ea';c.beginPath();c.ellipse(x,y,.42,.11,0,0,TAU);c.fill();c.beginPath();c.ellipse(x,y,.42,.11,0,0,TAU);pencil(c,INK,.8,1);c.stroke();
+  const food={rice:['#f6f2e6','#8a5a2a'],chicken:['#f6f2e6','#c9742a'],kala:['#4a2f22','#d9b46a'],kacchi:['#e3b052','#f6f2e6'],tea:['#a0662a','#f4f1ea']}[m.id];
+  if(m.id==='tea'){c.fillStyle='#f4f1ea';c.beginPath();c.rect(x-.12,y-.3,.24,.26);c.fill();c.fillStyle='#a0662a';c.fillRect(x-.1,y-.28,.2,.08);c.beginPath();c.rect(x-.12,y-.3,.24,.26);pencil(c,INK,.8,1);c.stroke();return}
+  c.fillStyle=food[0];c.beginPath();c.ellipse(x-.1,y-.06,.24,.1,0,Math.PI,TAU);c.fill();c.fillStyle=food[1];c.beginPath();c.arc(x+.17,y-.03,.1,Math.PI,TAU);c.fill();
+  c.beginPath();c.ellipse(x-.1,y-.06,.24,.1,0,Math.PI,TAU);pencil(c,INK,.6,.9);c.stroke();c.globalAlpha=1}
+function drawRoom(dt){
+  ROOM.t+=dt;simT+=dt;if(ROOM.sayT>0)ROOM.sayT-=dt;if(eating.dish){eating.t+=dt;if(eating.t>2.2)finishEating()}
+  const w=Math.round(W*DPR),h=Math.round(H*DPR);if(roomCv.width!==w||roomCv.height!==h){roomCv.width=w;roomCv.height=h}
+  const c=rctx,k=Math.min(W/17,H*.6/8.6);ROOM.k=k;ROOM.oy=H*.1+5.2*k;S=k;VEC=true;BOIL=REDUCED?0:Math.floor(ROOM.t*5)%3;
+  c.setTransform(DPR,0,0,DPR,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;c.fillStyle='#efe8d8';c.fillRect(0,0,W,H);
+  c.setTransform(DPR*k,0,0,DPR*k,DPR*W/2,DPR*ROOM.oy);c.lineCap='round';c.lineJoin='round';
+  /* wall, tiled dado, floor */
+  rpoly(c,rrect(-8,-5,8,0),wash('#e6d5ae',.6),INK,1,.05,.8,1.3);J=mulberry32(2+BOIL);c.beginPath();hatch(c,rrect(-8,-5,8,-1.5),.9,.34,.05);pencil(c,'#8a7a55',.22,.7);c.stroke();c.globalAlpha=1;
+  rpoly(c,rrect(-8,-1.5,8,0),wash('#7fa3a0',.5),null,3);c.beginPath();for(let x=-8;x<=8;x+=.5){c.moveTo(x,-1.5);c.lineTo(x,0)}for(let y=-1.5;y<=0;y+=.5){c.moveTo(-8,y);c.lineTo(8,y)}pencil(c,'#4a6d6a',.35,.7);c.stroke();c.globalAlpha=1;
+  rpoly(c,[[-8,0],[8,0],[9.3,3.3],[-9.3,3.3]],wash('#c9b38c',.5),INK,4,.05,.8,1.3);c.beginPath();for(let x=-8;x<=8;x+=2){c.moveTo(x,0);c.lineTo(x*1.16,3.3)}for(const y of[.7,1.5,2.4])c.moveTo(-8-y*.4,y),c.lineTo(8+y*.4,y);pencil(c,'#8a7a55',.3,.7);c.stroke();c.globalAlpha=1;
+  /* window onto the street, with a rickshaw going by */
+  {const x0=-3.1,x1=-.3,y0=-3.7,y1=-1.9,ww=x1-x0;c.save();c.beginPath();c.rect(x0,y0,ww,y1-y0);c.clip();c.fillStyle=wash('#cfe3ee',.75);c.fillRect(x0,y0,ww,y1-y0);
+  c.fillStyle=wash('#b9b2a0',.7);c.fillRect(x0,-2.5,ww,.6);const rx=x0+((ROOM.t*.5)%1)*(ww+1.6)-.8;c.fillStyle='#c0392b';c.fillRect(rx,-2.9,.9,.5);c.fillStyle='#2f2d2a';c.beginPath();circ(c,rx+.15,-2.35,.14);circ(c,rx+.75,-2.35,.14);c.fill();
+  const rx2=x0+((ROOM.t*.3+.5)%1)*(ww+1.2)-.6;c.fillStyle='#2e7d32';c.fillRect(rx2,-3.3,.7,.55);c.restore();
+  rpoly(c,rrect(x0,y0,x1,y1),null,INK,5,.04,.85,1.5);c.beginPath();for(let x=x0+ww/4;x<x1-.1;x+=ww/4){c.moveTo(x,y0);c.lineTo(x,y1)}pencil(c,INK,.6,1);c.stroke();c.globalAlpha=1;rpoly(c,rrect(x0-.2,y1,x1+.2,y1+.12),wash('#8a6a4a',.7),INK,6)}
+  /* sign and shelf above the counter */
+  rpoly(c,rrect(-7.6,-4.55,-3.9,-3.45),wash('#b8432f',.85),INK,7,.05,.85,1.3);RT(c,-5.75,-4.0,L2(RESTO.name[0],RESTO.name[1]),.5,'#f7f2e6','center',LANG==='en'?F_EN:F_BN,'600');
+  rpoly(c,rrect(-7.8,-2.95,-3.6,-2.85),wash('#6b4a32',.8),INK,8);J=mulberry32(9+BOIL);for(let i=0;i<7;i++){const x=-7.5+i*.58,hh=.28+(i*37%5)*.05;rpoly(c,rrect(x,-2.95-hh,x+.34,-2.95),wash(['#c9742a','#7fa36b','#c2185b','#e0b25a','#6d7fb3','#b24b4b','#9c7bb5'][i],.7),INK,10+i,.02,.7,.9)}
+  /* wall clock showing the real hour, chalk menu board */
+  {const cx=1.0,cy=-3.2;c.fillStyle='#f4f1ea';c.beginPath();circ(c,cx,cy,.55);c.fill();J=mulberry32(20+BOIL);c.beginPath();spoly(c,Array.from({length:12},(_,i)=>[cx+Math.cos(i/12*TAU)*.55,cy+Math.sin(i/12*TAU)*.55]),.02);pencil(c,INK,.85,1.4);c.stroke();
+  c.beginPath();for(let i=0;i<12;i++){const a=i/12*TAU;c.moveTo(cx+Math.cos(a)*.46,cy+Math.sin(a)*.46);c.lineTo(cx+Math.cos(a)*.52,cy+Math.sin(a)*.52)}pencil(c,INK,.7,.8);c.stroke();
+  const ha=(HOUR%12)/12*TAU-Math.PI/2,ma=(HOUR%1)*TAU-Math.PI/2;c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(ha)*.27,cy+Math.sin(ha)*.27);pencil(c,INK,.95,2.2);c.stroke();c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(ma)*.42,cy+Math.sin(ma)*.42);pencil(c,INK,.9,1.3);c.stroke();c.globalAlpha=1}
+  rpoly(c,rrect(2.7,-4.55,6.9,-2.05),wash('#2f3a33',.9),INK,21,.04,.9,1.6);RT(c,2.95,-4.2,L2('মেন্যু','Menu'),.34,'#f1eee6','left',F_BN,'600');
+  MENU.forEach((m,i)=>{const y=-3.75+i*.32;RT(c,2.95,y,LANG==='en'?m.en:m.bn,.25,'#e9e4d6','left',LANG==='en'?F_EN:F_BN);RT(c,6.65,y,'৳'+m.price,.25,'#e8c98a','right',F_EN)});
+  /* tube light and ceiling fan, kept clear of the window, clock and sign */
+  c.fillStyle='rgba(255,248,210,.55)';c.fillRect(1.4,-4.95,2.6,.2);rpoly(c,rrect(1.4,-4.95,4,-4.75),null,INK,22,.02,.8,1);
+  {const fx=-1.7,fy=-4.5;c.beginPath();c.moveTo(fx,-5);c.lineTo(fx,fy-.12);pencil(c,INK,.8,1.2);c.stroke();for(let i=0;i<3;i++){const a=ROOM.t*7+i*TAU/3,ex=fx+Math.cos(a)*1.4,ey=fy+Math.sin(a)*.22;c.beginPath();c.moveTo(fx,fy);c.lineTo(ex,ey);pencil(c,INK,.75,3.2);c.stroke()}c.fillStyle=wash('#6b4a32',.9);c.beginPath();c.ellipse(fx,fy,.2,.1,0,0,TAU);c.fill();c.globalAlpha=1}
+  /* the cook behind the counter, then the counter on top of his legs */
+  fig(c,ROOM.cook,-5.2,-.25);
+  rpoly(c,rrect(-7.8,-1.15,-3.6,0),wash('#8a6a4a',.55),INK,30,.04,.85,1.4);c.beginPath();for(let x=-7.3;x<-3.7;x+=.55){c.moveTo(x,-1.1);c.lineTo(x,-.03)}pencil(c,'#5a432e',.4,.8);c.stroke();c.globalAlpha=1;
+  rpoly(c,[[-7.9,-1.15],[-3.5,-1.15],[-3.35,-1.42],[-7.75,-1.42]],wash('#6b4a32',.75),INK,31,.03,.85,1.2);
+  for(const[x,r,hh]of[[-7.1,.5,.8],[-6.1,.38,.6]]){rpoly(c,rrect(x-r,-1.42-hh,x+r,-1.42),wash('#9a9a92',.75),INK,32+x,.03,.8,1.1);c.fillStyle=wash('#6f6f68',.8);c.beginPath();c.ellipse(x,-1.42-hh,r,r*.28,0,0,TAU);c.fill();c.beginPath();c.ellipse(x,-1.42-hh,r,r*.28,0,0,TAU);pencil(c,INK,.8,1);c.stroke();steam(c,x,-1.42-hh-.1,3,1.1,x);c.globalAlpha=1}
+  rpoly(c,rrect(-4.45,-1.8,-3.9,-1.42),wash('#b8b2a0',.8),INK,35,.02,.8,1);steam(c,-4.18,-1.85,2,.8,3);
+  /* tables, benches and diners; the player's seat is the middle table */
+  const tables=[-3.1,1.4,5.4];
+  tables.forEach((tx,ti)=>{
+    const ty=2.35;rpoly(c,rrect(tx-1.45,ty-1.07,tx+1.45,ty-.95),wash('#7a5a3a',.75),INK,40+ti,.03,.8,1.1);for(const lx of[-1.3,1.3]){c.beginPath();c.moveTo(tx+lx,ty-.95);c.lineTo(tx+lx,ty-.62);pencil(c,INK,.8,1.6);c.stroke()}c.globalAlpha=1;
+    for(const p of ROOM.crowd)if(Math.abs(p.rx-tx)<1.5){p.act=(Math.floor(ROOM.t/2.4+p.ph)%3===0)?null:'eat';p.dx=p.x=p.rx;fig(c,p,p.rx,ty-.55)}
+    if(ti===1){ROOM.roomMe.act=eating.dish&&eating.t>.5&&Math.floor(ROOM.t*2)%2?'eat':null;fig(c,ROOM.roomMe,tx-.7,ty-.55)}
+    rpoly(c,[[tx-1.5,ty-.95],[tx+1.5,ty-.95],[tx+1.2,ty-1.52],[tx-1.2,ty-1.52]],wash('#a88456',.65),INK,50+ti,.03,.85,1.3);
+    c.beginPath();for(let i=1;i<6;i++){const f=i/6;c.moveTo(tx-1.5+3*f,ty-.95);c.lineTo(tx-1.2+2.4*f,ty-1.52)}pencil(c,'#6b4a32',.28,.7);c.stroke();c.globalAlpha=1;
+    rpoly(c,rrect(tx-1.5,ty-.95,tx+1.5,ty-.82),wash('#6b4a32',.8),INK,70+ti,.02,.85,1.1);
+    c.fillStyle='#f4f1ea';c.beginPath();c.rect(tx+.85,ty-1.5,.14,.2);c.fill();pencil(c,INK,.7,.8);c.stroke();c.globalAlpha=1;
+    if(ti===1){if(eating.dish){dishArt(c,eating.dish,tx-.1,ty-1.25);steam(c,tx-.1,ty-1.4,3,.9,5)}}else dishArt(c,MENU[ti===0?0:3],tx-.1+(ti?0:.3),ty-1.25)});
+  /* the cook's bubble */
+  if(ROOM.sayT>0&&ROOM.say){const tw=RTW(c,ROOM.say,.3,LANG==='en'?F_EN:F_BN)+.5,bx=-5.2,by=-3.1,pts=rrect(bx-tw/2+.8,by-.28,bx+tw/2+.8,by+.28);c.globalAlpha=Math.min(1,ROOM.sayT);rpoly(c,pts,'#f7f2e6',INK,80,.03,.9,1.2);rpoly(c,[[bx,by+.28],[bx+.15,by+.28],[bx-.1,by+.58]],'#f7f2e6',INK,81,.01,.9,1.1);RT(c,bx+.8,by,ROOM.say,.3,INK,'center',LANG==='en'?F_EN:F_BN);c.globalAlpha=1}
+  /* paper grain and vignette, as on the street */
+  c.setTransform(DPR,0,0,DPR,0,0);if(!grainPat)grainPat=c.createPattern(grain,'repeat');c.globalCompositeOperation='multiply';c.globalAlpha=.55;c.fillStyle=grainPat;c.fillRect(0,0,W,H);
+  c.globalAlpha=1;const vg=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(150,130,100,.35)');c.fillStyle=vg;c.fillRect(0,0,W,H);c.globalCompositeOperation='source-over'}
+
 /* ---------------- status bar: wallet, clock, energy, goal ---------------- */
-const STAT={wallet:300,energy:100,goal:0,idle:0,tiredWarned:false};
+const STAT={wallet:300,energy:100,goal:0,idle:0,tiredWarned:false,ate:false};
 const bnTaka=n=>bnNum(Math.round(n));
 function addMoney(n){STAT.wallet=Math.max(0,STAT.wallet+n)}
 function addEnergy(n){STAT.energy=clamp(STAT.energy+n,0,100)}
@@ -2236,16 +2408,17 @@ const bldCentre=en=>{const b=buildings.find(b=>b.name&&b.name[1]===en);return b?
 const siteCentre=F=>F?FW(F,F.L/2,F.D/2):null;
 const GOALS=[
  {bn:'শাপলা ফোয়ারার কাছে যান',en:'Walk to the Shapla fountain',at:()=>[0,0],r:24,pay:0},
+ {bn:'মায়ের দোয়া হোটেলে খেয়ে নিন',en:'Eat at Mayer Doa Hotel',at:()=>RESTO.entry,r:0,pay:0,done:()=>STAT.ate},
  {bn:'বাংলাদেশ ব্যাংকে যান',en:'Walk to Bangladesh Bank',at:()=>bldCentre('Bangladesh Bank'),r:40,pay:100},
  {bn:'বায়তুল মোকাররমে যান',en:'Walk to Baitul Mukarram mosque',at:()=>siteCentre(sites.baitul),r:55,pay:100},
  {bn:'কমলাপুর রেল স্টেশনে যান',en:'Walk to Kamalapur railway station',at:()=>siteCentre(sites.kamalapur),r:55,pay:100},
 ];
-const goalNow=()=>STAT.goal<GOALS.length?GOALS[STAT.goal]:null;
+const goalNow=()=>{while(STAT.goal<GOALS.length&&!GOALS[STAT.goal].at())STAT.goal++;return STAT.goal<GOALS.length?GOALS[STAT.goal]:null};   // a goal whose place is missing is skipped
 function goalPos(){const g=goalNow();return g?g.at():null}
 function updGoal(){
   const g=goalNow();if(!g)return;const p=g.at();if(!p)return;
-  if(Math.hypot(me.x-p[0],me.y-p[1])<=g.r){STAT.goal++;if(g.pay)addMoney(g.pay);
-    toast(`${LANG==='bn'?g.bn.replace(/যান$/,'পৌঁছেছেন'):'Reached: '+g.en.replace(/^Walk to /,'')}${g.pay?` · +৳${g.pay}`:''}`);
+  if(g.done?g.done():Math.hypot(me.x-p[0],me.y-p[1])<=g.r){STAT.goal++;if(g.pay)addMoney(g.pay);
+    if(!g.done)toast(`${LANG==='bn'?g.bn.replace(/যান$/,'পৌঁছেছেন'):'Reached: '+g.en.replace(/^Walk to /,'')}${g.pay?` · +৳${g.pay}`:''}`);
     if(!goalNow())toast('All goals done for now. Wander freely!')}}
 function updStatus(dt,moved,running){updEnergy(dt,moved,running);updGoal()}
 
@@ -2270,6 +2443,6 @@ function drawGoalPointer(c){
   c.restore()}
 
 /* ---------------- test hooks: the whole script lives in an IIFE, so tests reach in through this one handle ---------------- */
-window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople,hitDyn,updYield,bumpInto,bubbles,STAT,GOALS,goalNow,addMoney,updEnergy,goalPos};
+window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople,hitDyn,updYield,bumpInto,bubbles,STAT,GOALS,goalNow,addMoney,updEnergy,goalPos,RESTO,MENU,enterRestaurant,leaveRestaurant,restoState,cellAt,hour:()=>HOUR,inside:()=>INSIDE,who:()=>cam.follow&&(cam.follow.name||(cam.follow.T&&cam.follow.T.en)||'?')+(cam.follow.stall?' (stall hawker)':'')};
 })();
 </script>
