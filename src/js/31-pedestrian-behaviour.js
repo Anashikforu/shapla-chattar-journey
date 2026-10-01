@@ -3,6 +3,7 @@ function vehicleNear(x,y,r){gridQuery(x,y,r,QB);for(const o of QB)if(o.hx!==unde
 function removePed(p){p.dead=true;if(p.slot){p.slot.who=null;p.slot=null}if(cam.follow===p){cam.follow=null;hideCard();toast(`${p.name} walked out of the sketch.`)}}
 function startCross(p,w2,s2){const P=walks[w2],lr=latRange(P),o=[];const lat=mr(lr[0],lr[1]);walkPos(P,s2,lat,o);p.st='go';p.tx=o[0];p.ty=o[1];p.after='walk';p.nw=w2;p.ns=s2;p.nlat=lat;p.crossing=true}
 function updPed(p,dt){
+  if(p.talkUntil>simT){p.pose='stand';return}   // someone is talking to them
   if(p.act&&p.actT<=simT)p.act=null;const rainy=rain>.35;
   switch(p.st){
   case 'walk':{const P=walks[p.w];let spd=p.spd*(rainy&&!p.look.hasUmb?1.5:1);

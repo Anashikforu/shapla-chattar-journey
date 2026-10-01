@@ -120,7 +120,7 @@ function drawRestaurantLabel(c,z){   // names of street eateries while zoomed ou
 /* walking in and out */
 let simT0=0;const eating={dish:null,t:0};
 function enterRestaurant(){
-  if(INSIDE||restoState()!==1)return;CUR=NEAR;INSIDE=true;simT0=simT;heldKeys.clear();me.path=null;me.goal=null;me.spd=0;me.enterOnArrive=null;eating.dish=null;
+  if(INSIDE||restoState()!==1)return;closeAct();CUR=NEAR;INSIDE=true;simT0=simT;heldKeys.clear();me.path=null;me.goal=null;me.spd=0;me.enterOnArrive=null;eating.dish=null;
   hideCard();document.body.classList.add('inside');$('inside').hidden=false;$('btnEnter').hidden=true;buildMenu();roomEnter(CUR);
   if(CUR.tier===1)playVoice('hotel_welcome_1',me.x,me.y,1)}
 function leaveRestaurant(){

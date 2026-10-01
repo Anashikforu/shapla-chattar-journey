@@ -12,7 +12,7 @@ function statusOf(o){
     case'waitBus':return'Waiting at the road edge for a bus.';case'plaza':return o.pose==='sit'?'Sitting for a while.':o.pose==='walk'?'Walking across the grounds.':'Standing around, chatting.';case'stalk':return'Following someone a little too closely…';case'flee':return'Running off with a snatched phone!';case'chase':return'Chasing the snatcher, shouting.';case'shock':return'Just got robbed. Shouting for help.';case'bargain':return'Bargaining over the fare.'}
   return''}
 function showCard(o){card.hidden=false;updateCard()}
-function updateCard(){const o=cam.follow;if(!o||card.hidden)return;
+function updateCard(){const o=cam.follow;if(!o||card.hidden)return;$('cardTalk').hidden=!!o.T||o.role==='me';
   if(o.T){const v=o,T=v.T;
     if(v.type==='rickshaw'){const pl=v.puller;$('cardName').innerHTML=`<span class="bn">${pl.nameBn}</span>${pl.name}`;$('cardRole').textContent=`Rickshaw puller, ${pl.age}. From ${pl.home}.`;$('cardThought').textContent=v.pax.length?`${v.pax[0].name} is paying ${v.fare} taka for this ride.`:'Pays 150 taka a day to rent this rickshaw from the garage owner.';$('cardFacts').textContent=`Hood ${v.hoodUp?'up':'down'} · ${v.pax.length} passenger${v.pax.length===1?'':'s'}`}
     else if(v.type==='bus'||v.type==='dd'){$('cardName').innerHTML=`<span class="bn">${v.coach?'দূরপাল্লার কোচ':T.bn}</span>${v.type==='dd'?'BRTC':(v.brt?v.brt[1]:'')}`;$('cardRole').textContent=`Driver ${v.driverName}, helper ${v.helper.name} (${v.helper.age}) at the door.`;$('cardThought').textContent=`About ${v.paxN} people inside, ${v.hangers.length+1} hanging at the door.`;$('cardFacts').textContent=v.type==='dd'?'State-run double-decker':'Private company bus, stops wherever someone waves'}

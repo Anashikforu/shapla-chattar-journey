@@ -94,6 +94,13 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 #loading.done{opacity:0}
 #btnEnter{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--paper-note);font-size:15px;padding:7px 16px;box-shadow:2px 3px 0 rgba(47,45,42,.12);max-width:calc(100vw - 28px)}
 #btnEnter:disabled{opacity:.75;cursor:default}
+#btnAct{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(122px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--paper-note);font-size:15px;padding:7px 16px;box-shadow:2px 3px 0 rgba(47,45,42,.12);max-width:calc(100vw - 28px)}
+.act{box-sizing:border-box;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) rotate(-.3deg);width:min(600px,calc(100vw - 28px));max-height:54vh;overflow:auto;z-index:7}
+.act h2{margin:0;font-size:20px;font-weight:700;line-height:1.1}
+.act h2 .bn{font-family:var(--f-bn);font-weight:600;color:var(--lead-red);margin-right:8px}
+.act .sub{margin:2px 0 6px;font-size:13px;color:var(--graphite-soft)}
+.act .say{margin:6px 0 8px;padding:6px 10px;font-size:14.5px;background:rgba(63,95,138,.1);border-left:3px solid var(--pencil-blue);border-radius:4px 10px 10px 4px}
+@media (max-width:900px){body.acting .card{display:none}}
 #inside{position:fixed;inset:0;z-index:4;background:var(--paper)}
 #room{position:absolute;inset:0;width:100%;height:100%;display:block}
 body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display:none!important}
@@ -182,6 +189,15 @@ body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display
 </aside>
 
 <button id="btnEnter" hidden></button>
+<button id="btnAct" hidden></button>
+
+<section class="note act" id="act" hidden aria-live="polite">
+  <h2 id="actTitle"></h2>
+  <p class="sub" id="actSub"></p>
+  <p class="say" id="actSay" hidden></p>
+  <div class="dishes" id="actBody"></div>
+  <button id="actClose">Close (Esc)</button>
+</section>
 
 <section id="inside" hidden aria-label="Inside Mayer Doa Hotel">
   <canvas id="room" aria-label="Pencil sketch of the inside of Mayer Doa Hotel: a counter with steaming pots, long wooden tables, a menu board."></canvas>
@@ -199,7 +215,7 @@ body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display
   <p class="now" id="cardNow"></p>
   <p class="thought" id="cardThought"></p>
   <p class="facts" id="cardFacts"></p>
-  <button id="cardClose">Stop following</button>
+  <button id="cardTalk">Talk (T)</button> <button id="cardClose">Stop following</button>
 </section>
 
 <div class="zoom"><button id="zin" aria-label="Zoom in">+</button><button id="zout" aria-label="Zoom out">−</button></div>

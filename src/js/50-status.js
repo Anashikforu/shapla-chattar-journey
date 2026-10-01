@@ -8,7 +8,7 @@ const tiredK=()=>STAT.energy>25?1:STAT.energy>0?.75:.5;   // speed factor: tired
 const canSprint=()=>STAT.energy>0;
 /* drain by distance (running costs double); rest slowly wins it back */
 function updEnergy(dt,moved,running){
-  if(moved>.01){STAT.idle=0;addEnergy(-moved*.012*(running?2:1))}
+  if(moved>.01){STAT.idle=0;addEnergy(-moved*.012*(running?2:1)*(STAT.sandals?.85:1))}
   else{STAT.idle+=dt;if(STAT.idle>.8)addEnergy(dt*.25)}
   if(STAT.energy<=25&&!STAT.tiredWarned){STAT.tiredWarned=true;toast(STAT.energy<=0?'Exhausted. Stand still for a bit.':'Getting tired. Rest a moment, or find something to eat.')}
   else if(STAT.energy>40)STAT.tiredWarned=false}

@@ -19,7 +19,7 @@ function pick(sx,sy){
   const test=(o,x,y,z)=>{const s=toScreen(x+KX*z,y-KZ*z),d=Math.hypot(s[0]-sx,s[1]-sy);if(d<bd){bd=d;best=o}};
   if(cam.zoom>1.4){for(const p of peds)if(onScreen(p.dx,p.dy))test(p,p.dx,p.dy,.9);for(const f of fixedPeople)if(!f.hidden&&onScreen(f.x,f.y))test(f,f.x,f.y,.8)}
   for(const v of vehicles)if(onScreen(v.dx,v.dy))test(v,v.dx,v.dy,1);
-  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else{unfollow();const w=toWorld(sx,sy);if(!tapRestaurant(w[0],w[1]))walkTo(w[0],w[1])}
+  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else{unfollow();const w=toWorld(sx,sy);if(!tapRestaurant(w[0],w[1])&&!tapStall(w[0],w[1]))walkTo(w[0],w[1])}
 }
 function follow(o){cam.follow=o;if(cam.tz<9)cam.tz=10;showCard(o)}
 document.getElementById('btnFollow').onclick=()=>{
