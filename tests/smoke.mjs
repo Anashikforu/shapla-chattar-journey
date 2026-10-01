@@ -48,6 +48,17 @@ await step('05-bird-cutaway', async () => { await click('btnAngle'); await click
 await step('06-footprints', () => click('btnBld'));
 await step('07-night', async () => { await click('btnBld'); await setHour(21); });
 
+// save/load check: change state, reload, confirm it was restored
+await page.evaluate(() => { document.getElementById('btnBld').click(); const s = document.getElementById('timeSlider'); s.value = 15.5; s.dispatchEvent(new Event('input')); });
+await new Promise(r => setTimeout(r, 3500));
+const before = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent }));
+await page.reload({ waitUntil: 'load' });
+await page.waitForFunction(() => !document.getElementById('loading'), { timeout: 30000 });
+await new Promise(r => setTimeout(r, 2500));
+const after = await page.evaluate(() => ({ b: document.getElementById('btnBld').textContent, f: document.getElementById('facing').textContent, clock: document.getElementById('clockEn').textContent }));
+const saveOk = before.b === after.b && before.f === after.f && /^3:/.test(after.clock);
+console.log(`Save/load: ${saveOk ? 'restored' : 'NOT restored'} (${after.b}, ${after.f}, ${after.clock})`);
+if (!saveOk) errors.push('save/load did not restore state');
 await browser.close();
 server.close();
 
