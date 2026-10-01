@@ -74,7 +74,7 @@ const compareRef = async (pg, name, file) => {
   else if (r.mad > THRESH.mad || r.bad > THRESH.bad) errors.push(`${name}: differs from the approved reference (mean diff ${r.mad.toFixed(1)}, ${(r.bad * 100).toFixed(0)}% of cells); run UPDATE_REFS=1 if the change is intended`);
 };
 /* a screenshot is taken at a fixed hour with the world paused, so the sky and shadows are the same every run */
-const HOURS = { '07-night': 21 }, hourFor = name => HOURS[name] ?? (/^(09|10|11)/.test(name) ? 10 : 8.5);
+const HOURS = { '07-night': 21 }, hourFor = name => HOURS[name] ?? (/^(12|13)/.test(name) ? 19 : /^(09|10|11)/.test(name) ? 10 : 8.5);
 const pause = (pg, on) => pg.evaluate(on => { const b = document.getElementById('btnPause'); if ((b.getAttribute('aria-pressed') === 'true') !== on) b.click(); }, on);
 const shot = async (name, pg = page) => {
   const fixed = !/^08/.test(name);   // 08 follows the avatar through a live crowd, so it is only a picture to look at
@@ -286,7 +286,7 @@ else {
   const toEntry = () => page.evaluate(() => { const { me, RESTO } = window.__journey; me.x = me.dx = RESTO.entry[0]; me.y = me.dy = RESTO.entry[1]; me.spd = 0; me.path = null; });
   await toEntry(); await settle(600);
   const near = await J();
-  await page.evaluate(() => { const { me, RESTO, nearestFree } = window.__journey; const f = nearestFree(RESTO.entry[0] + 40, RESTO.entry[1], 30); me.x = me.dx = f[0]; me.y = me.dy = f[1]; });
+  await page.evaluate(() => { const { me, RESTOS, nearestFree } = window.__journey; for (let r = 30; r < 200; r += 10) for (let a = 0; a < 12; a++) { const x = RESTOS[0].entry[0] + Math.cos(a) * r, y = RESTOS[0].entry[1] + Math.sin(a) * r, f = nearestFree(x, y, 3); if (f && RESTOS.every(R => Math.hypot(f[0] - R.entry[0], f[1] - R.entry[1]) > 15)) { me.x = me.dx = f[0]; me.y = me.dy = f[1]; return; } } });   // away from every restaurant door
   await settle(500); const far = await J();
   console.log(`Restaurant: ${resto.name}; prompt near=${near.btn ? '"' + near.btnText + '"' : 'HIDDEN'} far=${far.btn ? 'SHOWN' : 'hidden'}`);
   if (!near.btn || near.state !== 1 || near.btnOff || far.btn) errors.push('enter prompt should show next to the hotel and only there: ' + JSON.stringify({ near, far }));
@@ -350,7 +350,35 @@ else {
   if (!tapIn) errors.push('tapping the hotel from a distance did not take the avatar inside');
   await page.keyboard.press('Escape'); await settle(500);
 }
+// tiers: street eateries everywhere, a few good restaurants, one fine-dining place; status sets menu, prices and room
+const tiers = await page.evaluate(() => { const { RESTOS } = window.__journey, by = t => RESTOS.filter(R => R.tier === t), top = t => Math.max(...by(t).flatMap(R => R.menu.map(m => m.price))), best = t => Math.max(...by(t).flatMap(R => R.menu.map(m => m.gain)));
+  return { street: by(1).length, good: by(2).length, fine: by(3).length, topPrice: [top(1), top(2), top(3)], topEnergy: [best(1), best(2), best(3)], names: new Set(by(1).map(R => R.name[1])).size }; });
+console.log(`Restaurants: ${tiers.street} street eateries (${tiers.names} different names), ${tiers.good} good, ${tiers.fine} fine; dearest dish ${tiers.topPrice.join(' < ')}, best energy ${tiers.topEnergy.join(' < ')}`);
+if (tiers.street < 5 || tiers.good < 3 || tiers.fine !== 1) errors.push('expected many street eateries, several good restaurants and one fine-dining place: ' + JSON.stringify(tiers));
+if (!(tiers.topPrice[0] < tiers.topPrice[1] && tiers.topPrice[1] < tiers.topPrice[2]) || !(tiers.topEnergy[0] < tiers.topEnergy[1] && tiers.topEnergy[1] < tiers.topEnergy[2])) errors.push('better restaurants should charge more and feed better: ' + JSON.stringify(tiers));
+if (tiers.names < 4) errors.push('street eateries should have different names');
+for (const [tier, shotName, dishIndex] of [[2, '12-good-restaurant', 3], [3, '13-fine-dining', 3]]) {
+  await setHour(19); await settle(600);
+  const arrive = await page.evaluate(tier => { const { me, RESTOS, STAT } = window.__journey, R = RESTOS.find(R => R.tier === tier); me.x = me.dx = R.entry[0]; me.y = me.dy = R.entry[1]; me.spd = 0; me.path = null; STAT.energy = 30; STAT.wallet = 1000; STAT.fine = false; return R.name[1]; }, tier);
+  await settle(500); await page.evaluate(() => document.activeElement && document.activeElement.blur()); await page.keyboard.press('Enter'); await settle(500);
+  const inn = await page.evaluate(() => { const j = window.__journey; return { inside: j.inside(), dishes: document.querySelectorAll('#dishes .dish').length, title: document.getElementById('menuTitle').textContent }; });
+  console.log(`Tier ${tier}: ${arrive} -> inside ${inn.inside}, ${inn.dishes} dishes, "${inn.title}"`);
+  if (!inn.inside || inn.dishes !== 6 || !inn.title.includes(arrive)) errors.push(`tier ${tier} restaurant did not open properly: ` + JSON.stringify(inn));
+  await shot(shotName);
+  await page.click(`#dishes .dish[data-i="${dishIndex}"]`); await settle(3000);
+  const ate = await page.evaluate(() => { const { STAT } = window.__journey; return { wallet: STAT.wallet, energy: STAT.energy, fine: STAT.fine }; });
+  console.log(`  ordered dish ${dishIndex}: wallet ${ate.wallet}, energy ${ate.energy.toFixed(0)}, fine-dining goal flag ${ate.fine}`);
+  if (ate.wallet >= 900 || ate.energy < 90 || (tier === 3 && !ate.fine)) errors.push(`tier ${tier} order wrong: ` + JSON.stringify(ate));
+  await page.keyboard.press('Escape'); await settle(400);
+}
+await setHour(8); await settle(600);
+const early = await page.evaluate(() => { const { me, RESTOS } = window.__journey, R = RESTOS.find(R => R.tier === 3); me.x = me.dx = R.entry[0]; me.y = me.dy = R.entry[1]; return null; }); await settle(500);
+const shut = await page.evaluate(() => ({ state: window.__journey.restoState(), text: document.getElementById('btnEnter').textContent }));
+console.log(`Fine dining at 8 AM: state ${shut.state} ("${shut.text}")`);
+if (shut.state !== 2) errors.push('the fine-dining restaurant should be closed at 8 AM');
+await setHour(10); await settle(500);
 // bank goal pays 100
+await page.evaluate(() => { window.__journey.STAT.wallet = 300; });   // the restaurant tests above spent money
 const g2 = await goalAt();
 console.log(`Goals: bank -> goal ${g2.goal}, wallet ${g2.wallet}`);
 if (g2.goal !== 3 || g2.wallet !== 400) errors.push('bank goal should pay 100 and move on: ' + JSON.stringify(g2));

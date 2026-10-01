@@ -100,6 +100,7 @@ body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display
 .menu{box-sizing:border-box;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) rotate(-.3deg);width:min(660px,calc(100vw - 28px));max-height:44vh;overflow:auto}
 .menu h2{margin:0;font-size:20px;font-weight:700;line-height:1.1}
 .menu h2 .bn{font-family:var(--f-bn);font-weight:600;color:var(--lead-red);margin-right:8px}
+.menu h2 .tier{margin-left:8px;font-size:12px;font-weight:400;color:var(--graphite-soft);border:1px solid var(--graphite-soft);border-radius:8px;padding:0 6px}
 .menu .sub{margin:2px 0 8px;font-size:13px;color:var(--graphite-soft)}
 .dishes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
 .dish{display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;padding:5px 10px}
@@ -2083,7 +2084,7 @@ function updateClock(){const h=Math.floor(HOUR),m=Math.floor((HOUR-h)*60);const 
 
 /* ---------------- save & load (browser storage; safe when unavailable) ---------------- */
 const SAVE_KEY='shapla-journey-v1';let LOADED=false;
-function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me,stat:{w:Math.round(STAT.wallet),e:+STAT.energy.toFixed(1),g:STAT.goal,a:STAT.ate}}))}catch(e){}}
+function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me,stat:{w:Math.round(STAT.wallet),e:+STAT.energy.toFixed(1),g:STAT.goal,a:STAT.ate,f:STAT.fine}}))}catch(e){}}
 function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d||d.v!==1)return false;
   if(typeof d.hour==='number')HOUR=d.hour%24;
   if(d.cam){cam.x=cam.tx=d.cam.x;cam.y=cam.ty=d.cam.y;cam.zoom=cam.tz=clamp(d.cam.z,ZMIN,ZMAX)}
@@ -2094,7 +2095,7 @@ function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)|
   for(let i=0;i<3&&BMODE!==d.bmode;i++)cycleB();
   if(d.sound===false&&soundPref){soundPref=false;syncSoundUI()}
   if(d.me&&typeof d.me.x==='number'&&typeof d.me.y==='number'&&!navAt(d.me.x,d.me.y)){me.x=me.dx=d.me.x;me.y=me.dy=d.me.y}
-  if(d.stat){if(typeof d.stat.w==='number')STAT.wallet=Math.max(0,d.stat.w);if(typeof d.stat.e==='number')STAT.energy=clamp(d.stat.e,0,100);STAT.ate=!!d.stat.a;if(Number.isInteger(d.stat.g))STAT.goal=clamp(d.stat.g,0,GOALS.length)}
+  if(d.stat){if(typeof d.stat.w==='number')STAT.wallet=Math.max(0,d.stat.w);if(typeof d.stat.e==='number')STAT.energy=clamp(d.stat.e,0,100);STAT.ate=!!d.stat.a;STAT.fine=!!d.stat.f;if(Number.isInteger(d.stat.g))STAT.goal=clamp(d.stat.g,0,GOALS.length)}
   if(d.follow===false)cam.follow=null;else{cam.x=cam.tx=me.x+KX;cam.y=cam.ty=me.y-KZ}
   const dir=(d.dir|0)%4,ang=(d.ang|0)%ANGLES.length;
   if(dir!==VIEW.dir||ang!==angIdx){VIEW.dir=dir;VIEW.th=dir*Math.PI/2;angIdx=ang;const a=ANGLES[ang];VIEW.mode=a[0];VIEW.kx0=a[2];VIEW.kz0=a[3];$('btnAngle').textContent='Angle: '+a[1];applyView('Restoring your view…')}
@@ -2220,7 +2221,7 @@ function honkIfBlocking(){   // a vehicle stopped right in front of us leans on 
 function updAvatar(dt){
   let vx=0,vy=0,want=0,movedNow=0;
   if(heldKeys.size){let sx=0,sy=0;for(const k of heldKeys){sx+=MKEYS[k][0];sy+=MKEYS[k][1]}
-    if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;me.enterOnArrive=false;if(cam.follow!==me)followMe()}}
+    if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;me.enterOnArrive=null;if(cam.follow!==me)followMe()}}
   else if(me.path){const wp=me.path[0],dx=wp[0]-me.x,dy=wp[1]-me.y,d=Math.hypot(dx,dy);
     if(d<.35){me.path.shift();if(!me.path.length){me.path=null;me.goal=null}}else{vx=dx/d;vy=dy/d;want=Math.min(1,d/.8+.25)}}
   const run=sprint&&canSprint(),top=clamp(60/cam.zoom,3,6)*(run?1.5:1)*tiredK();   // never faster than the traffic (9 m/s flat out)
@@ -2236,7 +2237,7 @@ function updAvatar(dt){
   updStatus(dt,movedNow,run);
   me.vx=vx*me.spd;me.vy=vy*me.spd;if(me.bumpT>0)me.bumpT-=dt;
   pushOut(dt);updYield(dt);honkIfBlocking();
-  if(me.enterOnArrive&&!me.path){me.enterOnArrive=false;if(restoState()===1)enterRestaurant()}
+  if(me.enterOnArrive&&!me.path){const R=me.enterOnArrive;me.enterOnArrive=null;if(restoState()===1&&NEAR===R)enterRestaurant()}
   syncEnterBtn();
   me.pose=me.spd>.2?'walk':'stand';if(me.pose==='walk')me.ph+=Math.min(me.spd*5.4,14)*dt;
   const k=Math.min(1,dt*20);me.dx+=(me.x-me.dx)*k;me.dy+=(me.y-me.dy)*k;
@@ -2262,18 +2263,63 @@ function drawGoalMark(c){   // pencil circle and cross where a tap sent you
   J=mulberry32(11+BOIL);c.beginPath();const ring=[];for(let i=0;i<8;i++){const a=i/8*TAU;ring.push([gx+Math.cos(a)*r,gy+Math.sin(a)*r])}spoly(c,ring,r*.1);sl(c,gx-q,gy-q,gx+q,gy+q,r*.1);sl(c,gx-q,gy+q,gx+q,gy-q,r*.1);
   pencil(c,'#b8432f',.85,1.6);c.stroke();c.globalAlpha=1}
 
-/* ---------------- Mayer Doa Hotel: the first place you can walk into ---------------- */
+/* ---------------- restaurants you can walk into: street eateries, good restaurants, fine dining ---------------- */
 let INSIDE=false;
-const RESTO={st:null,entry:null,name:['মায়ের দোয়া হোটেল','Mayer Doa Hotel']};
 const L2=(bn,en)=>LANG==='en'?en:LANG==='both'?`${bn} · ${en}`:bn;
+/* menus: [bn, en, taka, energy, minutes, is a meal, plate colours or cup colour]. Better places charge more and feed you better. */
+const dish=(id,bn,en,price,gain,min,meal,art,cup)=>({id,bn,en,price,gain,min,meal,art,cup});
 const MENU=[
- {id:'rice',bn:'ভাত, ডাল, ভর্তা',en:'Rice, dal and bhorta',price:80,gain:35,min:20,meal:true},
- {id:'chicken',bn:'মুরগির ঝোল, ভাত',en:'Chicken curry and rice',price:140,gain:50,min:25,meal:true},
- {id:'kala',bn:'গরুর কালা ভুনা, পরোটা',en:'Beef kala bhuna and paratha',price:120,gain:45,min:20,meal:true},
- {id:'kacchi',bn:'কাচ্চি বিরিয়ানি',en:'Kacchi biryani',price:220,gain:75,min:30,meal:true},
- {id:'tea',bn:'দুধ চা',en:'Milk tea',price:10,gain:8,min:5,meal:false},
+ dish('rice','ভাত, ডাল, ভর্তা','Rice, dal and bhorta',80,35,20,true,['#f6f2e6','#8a5a2a']),
+ dish('chicken','মুরগির ঝোল, ভাত','Chicken curry and rice',140,50,25,true,['#f6f2e6','#c9742a']),
+ dish('kala','গরুর কালা ভুনা, পরোটা','Beef kala bhuna and paratha',120,45,20,true,['#4a2f22','#d9b46a']),
+ dish('kacchi','কাচ্চি বিরিয়ানি','Kacchi biryani',220,75,30,true,['#e3b052','#f6f2e6']),
+ dish('tea','দুধ চা','Milk tea',10,8,5,false,null,'#a0662a'),
 ];
-/* the hotel replaces whatever stalls stood on the footpath nearest the first view, in a gap clear of trees and poles */
+const MENU_GRILL=[
+ dish('pkebab','কাবাব-পরোটা','Kebab and paratha',90,35,15,true,['#6b3a22','#e3c27a']),
+ dish('roll','চিকেন রোল','Chicken roll',70,25,10,true,['#d9b46a','#8a5a2a']),
+ dish('seekh','সিক কাবাব, রুটি','Seekh kebab and roti',110,40,15,true,['#8a4a2a','#f1e6c8']),
+ dish('beefp','গরুর ভুনা, পরোটা','Beef bhuna and paratha',130,48,20,true,['#4a2f22','#e3c27a']),
+ dish('tea','দুধ চা','Milk tea',10,8,5,false,null,'#a0662a'),
+];
+const MENU_GOOD=[
+ dish('tehari','বিফ তেহারি','Beef tehari',220,55,25,true,['#e3b052','#6b3a22']),
+ dish('polao','মোরগ পোলাও, রোস্ট','Chicken polao and roast',320,68,30,true,['#f6f2e6','#c9742a']),
+ dish('kacchiL','কাচ্চি বিরিয়ানি (বড়)','Kacchi biryani, large',380,82,30,true,['#e3b052','#f6f2e6']),
+ dish('ilish','ইলিশ ভাপা, ভাত','Steamed hilsa and rice',420,72,30,true,['#c9d6d9','#f6f2e6']),
+ dish('firni','ফিরনি','Firni dessert',90,12,5,false,['#f4efe0','#c2185b']),
+ dish('lassi','ঘোল','Cold ghol',60,10,5,false,null,'#f1ede0'),
+];
+const MENU_FINE=[
+ dish('rezala','মাটন রেজালা, নান','Mutton rezala and naan',650,78,40,true,['#e8d8b0','#8a4a2a']),
+ dish('prawn','চিংড়ি মালাইকারি, পোলাও','Prawn malai curry and polao',780,88,40,true,['#f6f2e6','#e08a4a']),
+ dish('fish','গ্রিলড ফিশ প্ল্যাটার','Grilled fish platter',850,92,45,true,['#c9d6d9','#e0b25a']),
+ dish('steak','বিফ স্টেক','Beef steak',900,96,45,true,['#5a3326','#7fa36b']),
+ dish('shahi','শাহী টুকরা','Shahi tukra',350,20,10,false,['#f4efe0','#b8432f']),
+ dish('juice','তাজা ফলের জুস','Fresh fruit juice',180,12,5,false,null,'#e08a2a'),
+];
+/* a restaurant: door = where you stand to go in; reach is measured from the door. Stalls open with their stall; buildings keep set hours. */
+const RESTOS=[];
+const TIER={
+ 1:{menu:MENU,reach:4.5},
+ 2:{menu:MENU_GOOD,reach:4,hours:[10,23]},
+ 3:{menu:MENU_FINE,reach:4,hours:[12,23.5]},
+};
+const RESTO={st:null,entry:null,tier:1,menu:MENU,name:['মায়ের দোয়া হোটেল','Mayer Doa Hotel'],id:0};   // the first one, near the start; goals point at it
+const STREET_NAMES=[['হোটেল আল-আমিন','Hotel Al-Amin'],['নিউ ঢাকা হোটেল','New Dhaka Hotel'],['রহমানিয়া হোটেল','Rahmania Hotel'],['ভাই ভাই হোটেল','Bhai Bhai Hotel'],['মদিনা হোটেল','Madina Hotel'],['সাগর হোটেল','Sagar Hotel'],['মা-বাবার দোয়া হোটেল','Ma-Babar Doa Hotel'],['স্টার হোটেল','Star Hotel'],['আলাউদ্দিন হোটেল','Alauddin Hotel'],['শান্তি হোটেল','Shanti Hotel'],['মোতালেব হোটেল','Motaleb Hotel'],['কাশেম হোটেল','Kashem Hotel']];
+const GRILL_NAMES=[['বিসমিল্লাহ কাবাব','Bismillah Kebab'],['তোফা কাবাব ঘর','Tofa Kebab Ghor'],['আল-মদিনা পরোটা','Al-Madina Paratha'],['রাজা কাবাব','Raja Kebab'],['পুরান ঢাকার পরোটা','Puran Dhakar Porota']];
+/* the good restaurants and the fine-dining place go into existing buildings near these spots (radius from the centre, bearing in degrees) */
+const BUILDING_RESTOS=[
+ {name:['হাজী মাসুদ বিরিয়ানি','Haji Masud Biryani'],tier:2,r:75,deg:-110},
+ {name:['মামা হোটেল অ্যান্ড রেস্টুরেন্ট','Mama Hotel & Restaurant'],tier:2,r:110,deg:-20},
+ {name:['কমলাপুর ভাত ঘর','Kamalapur Rice House'],tier:2,r:140,deg:60},
+ {name:['বিসমিল্লাহ কাবাব ঘর','Bismillah Kabab Ghor'],tier:2,r:100,deg:150},
+ {name:['দ্য স্কাইলাইন রেস্তোরাঁ','The Skyline Restaurant'],tier:3,r:90,deg:20,fine:true},
+];
+let FINE=null;
+function restoOpen(R){return R.st?R.st.open:HOUR>=R.hours[0]&&HOUR<R.hours[1]}
+
+/* the first hotel replaces whatever stalls stood on the footpath nearest the first view, in a gap clear of trees and poles */
 function genRestaurant(){
   let best=null;
   for(const P of walks){if(P.closed||P.side===0||P.road<0)continue;const[s,d]=nearestS(P,0,-22);if(!best||d<best.d)best={P,s,d}}
@@ -2287,123 +2333,196 @@ function genRestaurant(){
     for(let i=stalls.length-1;i>=0;i--)if(stalls[i].dead){const j=fixedPeople.indexOf(stalls[i].hawker);if(j>=0)fixedPeople.splice(j,1);stalls.splice(i,1)}
     P.stalls.sort((a,b)=>a.s-b.s);RESTO.st=st;return}
 }
-function initRestaurantEntry(){const st=RESTO.st;if(st)RESTO.entry=nearestFree(st.sx,st.sy,6)}   // needs the nav grid
+/* needs the nav grid and the avatar's start, so it runs after initAvatar */
+function initRestaurantEntry(){
+  const reachable=e=>{const p=findPath(me.x,me.y,e[0],e[1]);return p&&!p.partial};
+  const add=R=>{RESTOS.push(R);R.id=RESTOS.length};
+  // 1. every roadside hotel and grill stall can be walked into (street eatery)
+  let hn=0,gn=0;
+  for(const st of stalls){if(st.type!=='hotel'&&st.type!=='grill')continue;
+    const isFirst=st===RESTO.st,e=nearestFree(st.sx,st.sy,6);if(!e||!reachable(e))continue;
+    if(isFirst){RESTO.entry=e;RESTO.x=st.x;RESTO.y=st.y;RESTO.hours=null;add(RESTO);continue}
+    if(!st.name)st.name=st.type==='grill'?GRILL_NAMES[gn++%GRILL_NAMES.length]:STREET_NAMES[hn++%STREET_NAMES.length];
+    add({st,tier:1,menu:st.type==='grill'?MENU_GRILL:MENU,name:st.name,entry:e,x:st.x,y:st.y,grill:st.type==='grill'})}
+  // 2. a few real restaurants in existing buildings: good ones, and one fine-dining place
+  const used=new Set();
+  for(const spec of BUILDING_RESTOS){
+    const tx=Math.cos(spec.deg*Math.PI/180)*spec.r,ty=Math.sin(spec.deg*Math.PI/180)*spec.r;
+    const cand=buildings.filter(b=>!b.landmark&&!b.name&&!b.mosque&&!used.has(b)&&b.top>=8&&b.parts[0].z0===0).map(b=>{const c=qCenter(b.foot);return{b,c,d:Math.hypot(c[0]-tx,c[1]-ty)}}).filter(o=>o.d<90).sort((a,b)=>a.d-b.d);
+    for(const o of cand.slice(0,25)){
+      const q=o.b.foot;let door=null;   // an edge whose outside is footpath, the one nearest the middle of town
+      for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4],m=[(a[0]+b[0])/2,(a[1]+b[1])/2];let nx=b[1]-a[1],ny=-(b[0]-a[0]);const L=Math.hypot(nx,ny)||1;nx/=L;ny/=L;
+        if(nx*(m[0]-o.c[0])+ny*(m[1]-o.c[1])<0){nx=-nx;ny=-ny}
+        for(const off of[1.6,2.4]){const p=[m[0]+nx*off,m[1]+ny*off];if(!navAt(p[0],p[1])&&cellAt(p[0],p[1])===1&&(!door||Math.hypot(...p)<Math.hypot(...door)))door=p}}
+      if(!door||!reachable(door))continue;
+      used.add(o.b);o.b.name=spec.name;o.b.resto=true;
+      const R={st:null,bld:o.b,tier:spec.tier,menu:TIER[spec.tier].menu,hours:TIER[spec.tier].hours,name:spec.name,entry:door,x:door[0],y:door[1],fine:!!spec.fine};add(R);if(spec.fine)FINE=R;break}}
+}
+/* what is within reach of the avatar right now */
+let NEAR=null,CUR=null;
+const resR=R=>TIER[R.tier].reach;
+function nearResto(){let best=null,bd=1e9;for(const R of RESTOS){const d=Math.hypot(me.x-R.entry[0],me.y-R.entry[1]);if(d<resR(R)&&d<bd){bd=d;best=R}}return best}
 /* 0 = out of reach, 1 = can walk in, 2 = closed */
-function restoState(){const st=RESTO.st;if(!st||!RESTO.entry||INSIDE)return 0;if(Math.hypot(me.x-st.x,me.y-st.y)>4.5)return 0;return st.open?1:2}
+function restoState(){if(INSIDE){return 0}NEAR=nearResto();if(!NEAR)return 0;return restoOpen(NEAR)?1:2}
 let enterLabel='';
 function syncEnterBtn(){const rs=restoState(),b=$('btnEnter');
   if(!rs){if(!b.hidden)b.hidden=true;return}
-  const t=rs===1?L2('ঢুকুন: মায়ের দোয়া হোটেল (Enter)','Enter Mayer Doa Hotel (Enter)'):L2('মায়ের দোয়া হোটেল এখন বন্ধ, খুলবে সকাল ৬টায়','Mayer Doa Hotel is closed, opens at 6 AM');
+  const R=NEAR,n=L2(R.name[0],R.name[1]),h=R.hours?R.hours[0]:6;
+  const t=rs===1?L2(`ঢুকুন: ${R.name[0]} (Enter)`,`Enter ${R.name[1]} (Enter)`):L2(`${R.name[0]} এখন বন্ধ`,`${R.name[1]} is closed${R.hours?`, opens at ${h>12?h-12:h} ${h>=12?'PM':'AM'}`:', opens at 6 AM'}`);
   if(t!==enterLabel){enterLabel=t;b.textContent=t}b.disabled=rs!==1;if(b.hidden)b.hidden=false}
-function tapRestaurant(x,y){const st=RESTO.st;if(!st||Math.hypot(x-st.x,y-st.y)>3.6)return false;
-  const rs=restoState();if(rs===1){enterRestaurant();return true}if(rs===2){toast(L2('হোটেল এখন বন্ধ।','The hotel is closed right now.'));return true}
-  if(!walkTo(RESTO.entry[0],RESTO.entry[1]))return true;me.enterOnArrive=true;return true}
-function drawRestaurantLabel(c,z){   // name on the map while zoomed out; up close it is on the sign
-  const st=RESTO.st;if(!st||z>=7||!onScreen(st.x,st.y))return;const s=toScreen(st.x+KX*3,st.y-KZ*3),px=clamp(10+z*1.6,11,15);
-  c.save();c.textAlign='center';c.textBaseline='middle';c.font=`600 ${px}px ${F_BN}`;c.lineWidth=4;c.strokeStyle='rgba(247,242,230,.9)';const t=LANG==='en'?RESTO.name[1]:RESTO.name[0];c.strokeText(t,s[0],s[1]);c.fillStyle=INK;c.fillText(t,s[0],s[1]);c.restore()}
+function tapRestaurant(x,y){
+  let hit=null;for(const R of RESTOS){const ok=R.st?Math.hypot(x-R.st.x,y-R.st.y)<3.6:(inQuad(R.bld.foot,x,y)||Math.hypot(x-R.entry[0],y-R.entry[1])<2.6);if(ok){hit=R;break}}
+  if(!hit)return false;
+  if(restoState()===1&&NEAR===hit){enterRestaurant();return true}
+  if(!restoOpen(hit)){toast(L2(`${hit.name[0]} এখন বন্ধ।`,`${hit.name[1]} is closed right now.`));return true}
+  if(!walkTo(hit.entry[0],hit.entry[1]))return true;me.enterOnArrive=hit;return true}
+function drawRestaurantLabel(c,z){   // names of street eateries while zoomed out (buildings are labelled with the others)
+  if(z>=7||z<2.5)return;c.save();c.textAlign='center';c.textBaseline='middle';const px=clamp(9+z*1.4,10,14);c.font=`600 ${px}px ${F_BN}`;c.lineWidth=4;c.strokeStyle='rgba(247,242,230,.9)';
+  for(const R of RESTOS){if(!R.st||!onScreen(R.st.x,R.st.y))continue;const s=toScreen(R.st.x+KX*3,R.st.y-KZ*3),t=LANG==='en'?R.name[1]:R.name[0];c.strokeText(t,s[0],s[1]);c.fillStyle=INK;c.fillText(t,s[0],s[1])}
+  c.restore()}
 
 /* walking in and out */
 let simT0=0;const eating={dish:null,t:0};
 function enterRestaurant(){
-  if(INSIDE||restoState()!==1)return;INSIDE=true;simT0=simT;heldKeys.clear();me.path=null;me.goal=null;me.spd=0;me.enterOnArrive=false;eating.dish=null;
-  hideCard();document.body.classList.add('inside');$('inside').hidden=false;$('btnEnter').hidden=true;buildMenu();roomEnter();
-  playVoice('hotel_welcome_1',me.x,me.y,1)}
+  if(INSIDE||restoState()!==1)return;CUR=NEAR;INSIDE=true;simT0=simT;heldKeys.clear();me.path=null;me.goal=null;me.spd=0;me.enterOnArrive=null;eating.dish=null;
+  hideCard();document.body.classList.add('inside');$('inside').hidden=false;$('btnEnter').hidden=true;buildMenu();roomEnter(CUR);
+  if(CUR.tier===1)playVoice('hotel_welcome_1',me.x,me.y,1)}
 function leaveRestaurant(){
   if(!INSIDE||eating.dish)return;INSIDE=false;simT=simT0;document.body.classList.remove('inside');$('inside').hidden=true;heldKeys.clear();syncEnterBtn()}
 function buildMenu(){
-  $('menuTitle').innerHTML=`<span class="bn">${RESTO.name[0]}</span>${RESTO.name[1]}`;
-  $('dishes').innerHTML=MENU.map((m,i)=>`<button class="dish" data-i="${i}"><span class="dn"><span class="bn">${m.bn}</span> <small>${m.en}</small></span><span class="dp">৳${m.price}<small> +${m.gain}</small></span></button>`).join('');
+  $('menuTitle').innerHTML=`<span class="bn">${CUR.name[0]}</span>${CUR.name[1]}<small class="tier">${CUR.tier===3?L2('দামি রেস্তোরাঁ','Fine dining'):CUR.tier===2?L2('ভালো রেস্তোরাঁ','Restaurant'):''}</small>`;
+  $('dishes').innerHTML=CUR.menu.map((m,i)=>`<button class="dish" data-i="${i}"><span class="dn"><span class="bn">${m.bn}</span> <small>${m.en}</small></span><span class="dp">৳${m.price}<small> +${m.gain}</small></span></button>`).join('');
   for(const b of $('dishes').querySelectorAll('.dish'))b.onclick=()=>orderDish(+b.dataset.i);syncMenu()}
 function menuNote(m){return eating.dish?L2('খাচ্ছেন…','Eating…'):STAT.wallet<m.price?L2('টাকা কম','Not enough taka'):m.meal&&STAT.energy>=97?L2('এখন খিদে নেই','Not hungry'):''}
 function syncMenu(){
   $('menuSub').textContent=L2('খাবার বেছে নিন। দাম টাকায়, পাশে শক্তি।','Pick something. Price in taka, then the energy it gives.');
   $('btnLeave').disabled=!!eating.dish;
-  for(const b of $('dishes').querySelectorAll('.dish')){const m=MENU[+b.dataset.i],why=menuNote(m);b.disabled=!!why;b.title=why}}
+  for(const b of $('dishes').querySelectorAll('.dish')){const m=CUR.menu[+b.dataset.i],why=menuNote(m);b.disabled=!!why;b.title=why}}
 function orderDish(i){
-  const m=MENU[i];if(!INSIDE||menuNote(m))return;
-  addMoney(-m.price);eating.dish=m;eating.t=0;roomSay(L2('নেন ভাই, গরম গরম!','Here you go, bhai, piping hot!'));syncMenu();updateStatusUI()}
+  const m=CUR.menu[i];if(!INSIDE||menuNote(m))return;
+  addMoney(-m.price);eating.dish=m;eating.t=0;roomSay(CUR.tier===1?L2('নেন ভাই, গরম গরম!','Here you go, bhai, piping hot!'):CUR.tier===2?L2('এই যে স্যার, আপনার অর্ডার।','Here is your order, sir.'):L2('বন অ্যাপেটিট, স্যার।','Bon appétit, sir.'));
+  if(CUR.fine)STAT.fine=true;syncMenu();updateStatusUI()}
 function finishEating(){
   const m=eating.dish;eating.dish=null;addEnergy(m.gain);HOUR=(HOUR+m.min/60)%24;if(m.meal)STAT.ate=true;
-  toast(L2(`${m.bn} খেলেন · শক্তি +${m.gain}`,`Ate ${m.en.toLowerCase()} · +${m.gain} energy`));roomSay(L2('আবার আসবেন ভাই!','Come again, bhai!'));syncMenu();updateStatusUI()}
+  toast(L2(`${m.bn} খেলেন · শক্তি +${m.gain}`,`Ate ${m.en.toLowerCase()} · +${m.gain} energy`));roomSay(CUR.tier===1?L2('আবার আসবেন ভাই!','Come again, bhai!'):L2('আবার আসবেন, স্যার।','Please come again, sir.'));syncMenu();updateStatusUI()}
 
 $('btnEnter').onclick=enterRestaurant;$('btnLeave').onclick=leaveRestaurant;
 addEventListener('keydown',e=>{
   if(e.key==='Escape'&&INSIDE){leaveRestaurant();return}
   if(e.key==='Enter'&&!INSIDE&&!['INPUT','BUTTON','TEXTAREA','SELECT','A'].includes(e.target.tagName)&&restoState()===1)enterRestaurant()});
 
-/* ---------------- inside the hotel: a pencil-sketched room, drawn live like the street ---------------- */
+/* ---------------- inside a restaurant: a pencil-sketched room, drawn live like the street. The tier sets the look. ---------------- */
 const roomCv=document.getElementById('room'),rctx=roomCv.getContext('2d');
-const ROOM={t:0,k:20,oy:0,cook:null,crowd:[],roomMe:null,say:'',sayT:0};
-function roomSay(t){ROOM.say=t;ROOM.sayT=4}
-function roomEnter(){
-  ROOM.t=0;ROOM.cook=makePerson('hawker',false);Object.assign(ROOM.cook.look,{dress:'lungi',c1:'#f1eee6',c2:'#3f5f8a',cap:true});Object.assign(ROOM.cook,{fixed:true,act:'serve',pose:'stand',fc:1});
-  ROOM.crowd=[[0,-3.6,1,'labour'],[1,-2.4,-1,'office'],[2,4.6,1,'student'],[3,6.2,-1,'customer']].map(([i,x,fc,role])=>{const p=makePerson(role,false);Object.assign(p,{fixed:true,pose:'sit',fc,ph:i});p.rx=x;return p});
+const ROOM={t:0,k:20,oy:0,R:null,st:null,cook:null,waiter:null,host:null,crowd:[],roomMe:null,say:'',sayT:0,sayAt:[-5.2,-3.1]};
+function roomSay(t,at){ROOM.say=t;ROOM.sayT=4;ROOM.sayAt=at||(ROOM.R&&ROOM.R.tier>1?[ROOM.st.speakX,-2.6]:[-5.2,-3.1])}
+/* looks per tier. Street eateries vary a little by name so no two feel identical. */
+const WALLS=[['#e6d5ae','#7fa3a0'],['#ead9b8','#8fb0a0'],['#e3d0b0','#a6b58a'],['#efe0c4','#7e9fb0']];
+function roomStyle(R){
+  const h=[...R.name[1]].reduce((a,c)=>a*31+c.charCodeAt(0)|0,7)>>>0;
+  if(R.tier===3)return{tier:3,wall:'#d8c3a0',dado:'#5a3a28',floor:'#8a2a30',cloth:'#f6f2e6',sign:['#1f1b18','#e8c98a'],curtain:'#8a1f2e',seed:h};
+  if(R.tier===2)return{tier:2,wall:'#efe3d0',dado:'#e9dcc0',floor:'#d9c9a8',cloth:['#b8432f','#2e6fa7','#2f7a4f'][h%3],sign:['#2f5a46','#e8c98a'],curtain:'#c9a24a',seed:h};
+  const w=WALLS[h%WALLS.length];return{tier:1,wall:w[0],dado:w[1],floor:'#c9b38c',cloth:null,sign:[['#b8432f','#f7f2e6'],['#2f5f8a','#f7f2e6'],['#6b3f8a','#f7f2e6']][h%3],curtain:null,seed:h};
+}
+function roomEnter(R){
+  const S0=roomStyle(R);ROOM.R=R;ROOM.st=S0;ROOM.t=0;
+  const cook=makePerson('hawker',false);Object.assign(cook.look,{dress:R.tier===1?'lungi':'pants',c1:R.tier===1?'#f1eee6':'#f7f2e6',c2:R.tier===1?'#3f5f8a':'#2f2d2a',cap:true});Object.assign(cook,{fixed:true,act:'serve',pose:'stand',fc:1});ROOM.cook=cook;
+  const staff=(role,c1,c2)=>{const p=makePerson(role,false);Object.assign(p.look,{dress:'pants',c1,c2,cap:false,tie:R.tier===3});Object.assign(p,{fixed:true,act:'serve',pose:'stand',fc:-1});return p};
+  ROOM.waiter=R.tier>1?staff('helper',R.tier===3?'#1f1b18':'#f7f2e6',R.tier===3?'#1f1b18':'#2f2d2a'):null;ROOM.host=R.tier===3?staff('banker','#f7f2e6','#1f1b18'):null;
+  S0.speakX=R.tier>1?-1.6:-5.2;
+  ROOM.crowd=[[0,-3.6,1,'labour'],[1,-2.4,-1,'office'],[2,4.6,1,'student'],[3,6.2,-1,'customer']].map(([i,x,fc,role])=>{const p=makePerson(role,i===3&&R.tier>1);Object.assign(p,{fixed:true,pose:'sit',fc,ph:i});p.rx=x;if(R.tier>1)Object.assign(p.look,{dress:p.look.female?'salwar':'pants',c1:mpick(['#f1eee6','#8fb3d9','#c9d8e8','#9c7bb5'])});return p});
   ROOM.roomMe={look:me.look,fixed:true,pose:'sit',fc:1,ph:0,act:null};
-  roomSay(L2('আসেন ভাই, বসেন! কী খাবেন?','Come in, bhai, sit down! What will you have?'))}
+  roomSay(R.tier===1?L2('আসেন ভাই, বসেন! কী খাবেন?','Come in, bhai, sit down! What will you have?'):R.tier===2?L2('স্বাগতম, স্যার! টেবিল রেডি।','Welcome, sir! Your table is ready.'):L2('আসসালামু আলাইকুম, স্যার। আপনার টেবিল প্রস্তুত।','Good evening, sir. Your table is ready.'))}
 const RT=(c,x,y,str,m,col,align='left',font=F_BN,weight='')=>{c.save();c.setTransform(DPR,0,0,DPR,0,0);c.font=`${weight} ${(m*ROOM.k).toFixed(1)}px ${font}`;c.fillStyle=col;c.textAlign=align;c.textBaseline='middle';c.fillText(str,W/2+x*ROOM.k,ROOM.oy+y*ROOM.k);c.restore()};
 const RTW=(c,str,m,font=F_BN)=>{c.save();c.setTransform(DPR,0,0,DPR,0,0);c.font=`${(m*ROOM.k).toFixed(1)}px ${font}`;const w=c.measureText(str).width/ROOM.k;c.restore();return w};
 function fig(c,p,x,y){const k1=KX,k2=KZ;KX=0;KZ=1;try{drawPerson0(c,p,x,y,3,{noUmb:true})}finally{KX=k1;KZ=k2}}
 function rpoly(c,pts,fill,ink,seed,j=.04,a=.8,w=1.1){J=mulberry32(seed+BOIL);if(fill){c.fillStyle=fill;c.globalAlpha=1;fillPoly(c,pts)}if(ink){c.beginPath();spoly(c,pts,j);pencil(c,ink,a,w);c.stroke();c.globalAlpha=1}}
 const rrect=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
 function steam(c,x,y,n,h,seed){c.beginPath();for(let i=0;i<n;i++){const ph=ROOM.t*1.6+i*2.1+seed;c.moveTo(x+(i-(n-1)/2)*.16,y);for(let s=1;s<=8;s++){const f=s/8;c.lineTo(x+(i-(n-1)/2)*.16+Math.sin(ph+f*4)*.1*f,y-f*h)}}pencil(c,INK2,.32,1);c.stroke();c.globalAlpha=1}
-function dishArt(c,m,x,y){   // what is on the plate, drawn on the table top at (x,y)
-  c.globalAlpha=1;c.fillStyle='#f4f1ea';c.beginPath();c.ellipse(x,y,.42,.11,0,0,TAU);c.fill();c.beginPath();c.ellipse(x,y,.42,.11,0,0,TAU);pencil(c,INK,.8,1);c.stroke();
-  const food={rice:['#f6f2e6','#8a5a2a'],chicken:['#f6f2e6','#c9742a'],kala:['#4a2f22','#d9b46a'],kacchi:['#e3b052','#f6f2e6'],tea:['#a0662a','#f4f1ea']}[m.id];
-  if(m.id==='tea'){c.fillStyle='#f4f1ea';c.beginPath();c.rect(x-.12,y-.3,.24,.26);c.fill();c.fillStyle='#a0662a';c.fillRect(x-.1,y-.28,.2,.08);c.beginPath();c.rect(x-.12,y-.3,.24,.26);pencil(c,INK,.8,1);c.stroke();return}
+function dishArt(c,m,x,y){   // what is on the plate or in the cup, drawn on the table top at (x,y)
+  c.globalAlpha=1;
+  if(m.cup){c.fillStyle='#f4f1ea';c.beginPath();c.rect(x-.12,y-.3,.24,.26);c.fill();c.fillStyle=m.cup;c.fillRect(x-.1,y-.28,.2,.1);c.beginPath();c.rect(x-.12,y-.3,.24,.26);pencil(c,INK,.8,1);c.stroke();c.globalAlpha=1;return}
+  c.fillStyle='#f4f1ea';c.beginPath();c.ellipse(x,y,.42,.11,0,0,TAU);c.fill();c.beginPath();c.ellipse(x,y,.42,.11,0,0,TAU);pencil(c,INK,.8,1);c.stroke();
+  const food=m.art||['#f6f2e6','#8a5a2a'];
   c.fillStyle=food[0];c.beginPath();c.ellipse(x-.1,y-.06,.24,.1,0,Math.PI,TAU);c.fill();c.fillStyle=food[1];c.beginPath();c.arc(x+.17,y-.03,.1,Math.PI,TAU);c.fill();
   c.beginPath();c.ellipse(x-.1,y-.06,.24,.1,0,Math.PI,TAU);pencil(c,INK,.6,.9);c.stroke();c.globalAlpha=1}
+function curtains(c,x0,x1,y0,y1,col,gold){   // drapes either side of the window, tied back
+  for(const sd of[-1,1]){const ex=sd<0?x0:x1,ox=sd*.55;const pts=[[ex-ox*.2,y0-.2],[ex+ox*1.6,y0-.2],[ex+ox*1.2,y1-.5],[ex+ox*.9,y1],[ex-ox*.6,y1+.05]];
+    rpoly(c,pts,wash(col,.85),INK,90+sd,.03,.8,1.1);c.beginPath();for(let i=1;i<4;i++){const f=i/4;c.moveTo(ex+(-ox*.2+(ox*1.6-ox*.2)*f)*1,y0-.2);c.lineTo(ex+(-ox*.6+(ox*.9+ox*.6)*f)*1,y1)}pencil(c,shade(col,.6),.4,.8);c.stroke();c.globalAlpha=1;
+    if(gold){c.fillStyle='#e8c98a';c.beginPath();circ(c,ex+ox*.45,y1-.9,.09);c.fill()}}
+  rpoly(c,rrect(x0-.7,y0-.3,x1+.7,y0-.2),wash('#6b4a32',.9),INK,92)}
 function drawRoom(dt){
   ROOM.t+=dt;simT+=dt;if(ROOM.sayT>0)ROOM.sayT-=dt;if(eating.dish){eating.t+=dt;if(eating.t>2.2)finishEating()}
   const w=Math.round(W*DPR),h=Math.round(H*DPR);if(roomCv.width!==w||roomCv.height!==h){roomCv.width=w;roomCv.height=h}
-  const c=rctx,k=Math.min(W/17,H*.6/8.6);ROOM.k=k;ROOM.oy=H*.1+5.2*k;S=k;VEC=true;BOIL=REDUCED?0:Math.floor(ROOM.t*5)%3;
+  const c=rctx,k=Math.min(W/17,H*.6/8.6),R=ROOM.R,ST=ROOM.st,T=ST.tier,menu=R.menu;ROOM.k=k;ROOM.oy=H*.1+5.2*k;S=k;VEC=true;BOIL=REDUCED?0:Math.floor(ROOM.t*5)%3;
   c.setTransform(DPR,0,0,DPR,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;c.fillStyle='#efe8d8';c.fillRect(0,0,W,H);
   c.setTransform(DPR*k,0,0,DPR*k,DPR*W/2,DPR*ROOM.oy);c.lineCap='round';c.lineJoin='round';
-  /* wall, tiled dado, floor */
-  rpoly(c,rrect(-8,-5,8,0),wash('#e6d5ae',.6),INK,1,.05,.8,1.3);J=mulberry32(2+BOIL);c.beginPath();hatch(c,rrect(-8,-5,8,-1.5),.9,.34,.05);pencil(c,'#8a7a55',.22,.7);c.stroke();c.globalAlpha=1;
-  rpoly(c,rrect(-8,-1.5,8,0),wash('#7fa3a0',.5),null,3);c.beginPath();for(let x=-8;x<=8;x+=.5){c.moveTo(x,-1.5);c.lineTo(x,0)}for(let y=-1.5;y<=0;y+=.5){c.moveTo(-8,y);c.lineTo(8,y)}pencil(c,'#4a6d6a',.35,.7);c.stroke();c.globalAlpha=1;
-  rpoly(c,[[-8,0],[8,0],[9.3,3.3],[-9.3,3.3]],wash('#c9b38c',.5),INK,4,.05,.8,1.3);c.beginPath();for(let x=-8;x<=8;x+=2){c.moveTo(x,0);c.lineTo(x*1.16,3.3)}for(const y of[.7,1.5,2.4])c.moveTo(-8-y*.4,y),c.lineTo(8+y*.4,y);pencil(c,'#8a7a55',.3,.7);c.stroke();c.globalAlpha=1;
-  /* window onto the street, with a rickshaw going by */
-  {const x0=-3.1,x1=-.3,y0=-3.7,y1=-1.9,ww=x1-x0;c.save();c.beginPath();c.rect(x0,y0,ww,y1-y0);c.clip();c.fillStyle=wash('#cfe3ee',.75);c.fillRect(x0,y0,ww,y1-y0);
+  /* wall, dado, floor: tiles, cream wainscot or dark panelling; tiles, chequer or carpet */
+  rpoly(c,rrect(-8,-5,8,0),wash(ST.wall,.6),INK,1,.05,.8,1.3);J=mulberry32(2+BOIL);c.beginPath();hatch(c,rrect(-8,-5,8,-1.5),.9,.34,.05);pencil(c,'#8a7a55',.22,.7);c.stroke();c.globalAlpha=1;
+  if(T===1){rpoly(c,rrect(-8,-1.5,8,0),wash(ST.dado,.5),null,3);c.beginPath();for(let x=-8;x<=8;x+=.5){c.moveTo(x,-1.5);c.lineTo(x,0)}for(let y=-1.5;y<=0;y+=.5){c.moveTo(-8,y);c.lineTo(8,y)}pencil(c,'#4a6d6a',.35,.7);c.stroke();c.globalAlpha=1}
+  else{const top=T===3?-2.2:-1.3;rpoly(c,rrect(-8,top,8,0),wash(ST.dado,.85),null,3);c.beginPath();for(let x=-8;x<8;x+=1.6){c.moveTo(x+.15,top+.18);c.lineTo(x+1.45,top+.18);c.lineTo(x+1.45,-.18);c.lineTo(x+.15,-.18);c.closePath()}pencil(c,T===3?'#2b1a10':'#a89a78',.55,.9);c.stroke();c.globalAlpha=1;
+    c.beginPath();c.moveTo(-8,top);c.lineTo(8,top);pencil(c,T===3?'#e8c98a':'#8a7a55',.8,T===3?2:1.2);c.stroke();c.globalAlpha=1}
+  const fl=[[-8,0],[8,0],[9.3,3.3],[-9.3,3.3]];rpoly(c,fl,wash(ST.floor,T===3?.8:.5),INK,4,.05,.8,1.3);
+  if(T===1){c.beginPath();for(let x=-8;x<=8;x+=2){c.moveTo(x,0);c.lineTo(x*1.16,3.3)}for(const y of[.7,1.5,2.4])c.moveTo(-8-y*.4,y),c.lineTo(8+y*.4,y);pencil(c,'#8a7a55',.3,.7);c.stroke();c.globalAlpha=1}
+  else if(T===2){for(let r=0;r<4;r++)for(let cc=0;cc<8;cc++){if((r+cc)%2)continue;const y0=r*.825,y1=y0+.825,s0=1+y0*.0485,s1=1+y1*.0485,x0=-8+cc*2,x1=x0+2;rpoly(c,[[x0*s0,y0],[x1*s0,y0],[x1*s1,y1],[x0*s1,y1]],wash('#3f3a35',.4),null,5)}c.beginPath();for(let x=-8;x<=8;x+=2){c.moveTo(x,0);c.lineTo(x*1.16,3.3)}pencil(c,'#8a7a55',.3,.7);c.stroke();c.globalAlpha=1}
+  else{c.beginPath();c.moveTo(-7.4,.3);c.lineTo(7.4,.3);c.lineTo(8.6,3.0);c.lineTo(-8.6,3.0);c.closePath();pencil(c,'#e8c98a',.85,2);c.stroke();c.beginPath();c.moveTo(-6.9,.55);c.lineTo(6.9,.55);c.lineTo(8,2.75);c.lineTo(-8,2.75);c.closePath();pencil(c,'#e8c98a',.5,1);c.stroke();c.globalAlpha=1}
+  /* window onto the street, with a rickshaw going by (curtains in the better places) */
+  {const x0=-3.1,x1=-.3,y0=-3.7,y1=-1.9,ww=x1-x0;c.save();c.beginPath();c.rect(x0,y0,ww,y1-y0);c.clip();c.fillStyle=wash(T===3?'#3a4a66':'#cfe3ee',.75);c.fillRect(x0,y0,ww,y1-y0);
   c.fillStyle=wash('#b9b2a0',.7);c.fillRect(x0,-2.5,ww,.6);const rx=x0+((ROOM.t*.5)%1)*(ww+1.6)-.8;c.fillStyle='#c0392b';c.fillRect(rx,-2.9,.9,.5);c.fillStyle='#2f2d2a';c.beginPath();circ(c,rx+.15,-2.35,.14);circ(c,rx+.75,-2.35,.14);c.fill();
   const rx2=x0+((ROOM.t*.3+.5)%1)*(ww+1.2)-.6;c.fillStyle='#2e7d32';c.fillRect(rx2,-3.3,.7,.55);c.restore();
-  rpoly(c,rrect(x0,y0,x1,y1),null,INK,5,.04,.85,1.5);c.beginPath();for(let x=x0+ww/4;x<x1-.1;x+=ww/4){c.moveTo(x,y0);c.lineTo(x,y1)}pencil(c,INK,.6,1);c.stroke();c.globalAlpha=1;rpoly(c,rrect(x0-.2,y1,x1+.2,y1+.12),wash('#8a6a4a',.7),INK,6)}
+  rpoly(c,rrect(x0,y0,x1,y1),null,INK,5,.04,.85,1.5);c.beginPath();for(let x=x0+ww/4;x<x1-.1;x+=ww/4){c.moveTo(x,y0);c.lineTo(x,y1)}pencil(c,INK,.6,1);c.stroke();c.globalAlpha=1;rpoly(c,rrect(x0-.2,y1,x1+.2,y1+.12),wash('#8a6a4a',.7),INK,6);
+  if(ST.curtain)curtains(c,x0,x1,y0,y1,ST.curtain,T===3)}
   /* sign and shelf above the counter */
-  rpoly(c,rrect(-7.6,-4.55,-3.9,-3.45),wash('#b8432f',.85),INK,7,.05,.85,1.3);RT(c,-5.75,-4.0,L2(RESTO.name[0],RESTO.name[1]),.5,'#f7f2e6','center',LANG==='en'?F_EN:F_BN,'600');
+  rpoly(c,rrect(-7.6,-4.55,-3.9,-3.45),T===1?wash(ST.sign[0],.85):ST.sign[0],T===3?'#e8c98a':INK,7,.05,.85,T===3?2:1.3);{const nm=L2(R.name[0],R.name[1]),fnt=LANG==='en'?F_EN:F_BN,w0=RTW(c,nm,.5,fnt);RT(c,-5.75,-4.0,nm,Math.min(.5,.5*3.4/w0),ST.sign[1],'center',fnt,'600')}   // long names shrink to fit the sign
   rpoly(c,rrect(-7.8,-2.95,-3.6,-2.85),wash('#6b4a32',.8),INK,8);J=mulberry32(9+BOIL);for(let i=0;i<7;i++){const x=-7.5+i*.58,hh=.28+(i*37%5)*.05;rpoly(c,rrect(x,-2.95-hh,x+.34,-2.95),wash(['#c9742a','#7fa36b','#c2185b','#e0b25a','#6d7fb3','#b24b4b','#9c7bb5'][i],.7),INK,10+i,.02,.7,.9)}
-  /* wall clock showing the real hour, chalk menu board */
-  {const cx=1.0,cy=-3.2;c.fillStyle='#f4f1ea';c.beginPath();circ(c,cx,cy,.55);c.fill();J=mulberry32(20+BOIL);c.beginPath();spoly(c,Array.from({length:12},(_,i)=>[cx+Math.cos(i/12*TAU)*.55,cy+Math.sin(i/12*TAU)*.55]),.02);pencil(c,INK,.85,1.4);c.stroke();
+  /* wall clock showing the real hour; menu board (chalk) or framed card; pictures in the better places */
+  {const cx=1.0,cy=-3.2;c.fillStyle='#f4f1ea';c.beginPath();circ(c,cx,cy,.55);c.fill();J=mulberry32(20+BOIL);c.beginPath();spoly(c,Array.from({length:12},(_,i)=>[cx+Math.cos(i/12*TAU)*.55,cy+Math.sin(i/12*TAU)*.55]),.02);pencil(c,T===3?'#c9a24a':INK,.85,1.4);c.stroke();
   c.beginPath();for(let i=0;i<12;i++){const a=i/12*TAU;c.moveTo(cx+Math.cos(a)*.46,cy+Math.sin(a)*.46);c.lineTo(cx+Math.cos(a)*.52,cy+Math.sin(a)*.52)}pencil(c,INK,.7,.8);c.stroke();
   const ha=(HOUR%12)/12*TAU-Math.PI/2,ma=(HOUR%1)*TAU-Math.PI/2;c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(ha)*.27,cy+Math.sin(ha)*.27);pencil(c,INK,.95,2.2);c.stroke();c.beginPath();c.moveTo(cx,cy);c.lineTo(cx+Math.cos(ma)*.42,cy+Math.sin(ma)*.42);pencil(c,INK,.9,1.3);c.stroke();c.globalAlpha=1}
-  rpoly(c,rrect(2.7,-4.55,6.9,-2.05),wash('#2f3a33',.9),INK,21,.04,.9,1.6);RT(c,2.95,-4.2,L2('মেন্যু','Menu'),.34,'#f1eee6','left',F_BN,'600');
-  MENU.forEach((m,i)=>{const y=-3.75+i*.32;RT(c,2.95,y,LANG==='en'?m.en:m.bn,.25,'#e9e4d6','left',LANG==='en'?F_EN:F_BN);RT(c,6.65,y,'৳'+m.price,.25,'#e8c98a','right',F_EN)});
-  /* tube light and ceiling fan, kept clear of the window, clock and sign */
-  c.fillStyle='rgba(255,248,210,.55)';c.fillRect(1.4,-4.95,2.6,.2);rpoly(c,rrect(1.4,-4.95,4,-4.75),null,INK,22,.02,.8,1);
-  {const fx=-1.7,fy=-4.5;c.beginPath();c.moveTo(fx,-5);c.lineTo(fx,fy-.12);pencil(c,INK,.8,1.2);c.stroke();for(let i=0;i<3;i++){const a=ROOM.t*7+i*TAU/3,ex=fx+Math.cos(a)*1.4,ey=fy+Math.sin(a)*.22;c.beginPath();c.moveTo(fx,fy);c.lineTo(ex,ey);pencil(c,INK,.75,3.2);c.stroke()}c.fillStyle=wash('#6b4a32',.9);c.beginPath();c.ellipse(fx,fy,.2,.1,0,0,TAU);c.fill();c.globalAlpha=1}
-  /* the cook behind the counter, then the counter on top of his legs */
+  const board=T===3?'#f1e8d2':T===2?'#2f3a33':'#2f3a33',ink=T===3?'#3a2a1a':'#e9e4d6',gold=T===3?'#8a1f2e':'#e8c98a';
+  rpoly(c,rrect(2.7,-4.55,6.9,-2.05),T===3?board:wash('#2f3a33',.9),T===3?'#c9a24a':INK,21,.04,.9,T===3?3:1.6);RT(c,2.95,-4.2,L2('মেন্যু','Menu'),.34,T===3?'#8a1f2e':'#f1eee6','left',F_BN,'600');
+  menu.forEach((m,i)=>{const y=-3.8+i*.3;RT(c,2.95,y,LANG==='en'?m.en:m.bn,.25,ink,'left',LANG==='en'?F_EN:F_BN);RT(c,6.65,y,'৳'+m.price,.25,gold,'right',F_EN)});
+  if(T>1){for(const[fx,fy,fw,fh,col]of[[7.15,-4.3,.7,.9,'#9fb3bf'],[7.15,-3.2,.7,.7,'#c9a07e']]){rpoly(c,rrect(fx,fy,fx+fw,fy+fh),T===3?'#c9a24a':'#6b4a32',INK,40+fy,.02,.8,1.2);rpoly(c,rrect(fx+.08,fy+.08,fx+fw-.08,fy+fh-.08),wash(col,.8),null,41)}}
+  /* lighting: tube and fan (street, good), chandelier (fine), air-conditioner (good) */
+  if(T<3){c.fillStyle='rgba(255,248,210,.55)';c.fillRect(1.4,-4.95,2.6,.2);rpoly(c,rrect(1.4,-4.95,4,-4.75),null,INK,22,.02,.8,1);
+    const fx=-1.7,fy=-4.5;c.beginPath();c.moveTo(fx,-5);c.lineTo(fx,fy-.12);pencil(c,INK,.8,1.2);c.stroke();for(let i=0;i<3;i++){const a=ROOM.t*7+i*TAU/3,ex=fx+Math.cos(a)*1.4,ey=fy+Math.sin(a)*.22;c.beginPath();c.moveTo(fx,fy);c.lineTo(ex,ey);pencil(c,INK,.75,3.2);c.stroke()}c.fillStyle=wash('#6b4a32',.9);c.beginPath();c.ellipse(fx,fy,.2,.1,0,0,TAU);c.fill();c.globalAlpha=1}
+  if(T===2){rpoly(c,rrect(-2.7,-4.85,-.6,-4.3),wash('#f4f1ea',.95),INK,23,.02,.85,1.2);c.beginPath();for(let i=0;i<4;i++){c.moveTo(-2.55,-4.62+i*.1);c.lineTo(-.75,-4.62+i*.1)}pencil(c,INK2,.5,.8);c.stroke();c.globalAlpha=1}
+  if(T===3){const cx=0,cy=-4.2;c.beginPath();c.moveTo(cx,-5);c.lineTo(cx,cy-.4);pencil(c,'#c9a24a',.9,1.4);c.stroke();
+    c.fillStyle='rgba(255,236,170,.35)';c.beginPath();c.ellipse(cx,cy,2.2,.9,0,0,TAU);c.fill();
+    c.beginPath();for(const bx of[-1.3,-.65,0,.65,1.3]){c.moveTo(cx,cy-.35);c.quadraticCurveTo(cx+bx*.5,cy+.05,cx+bx,cy+.15+Math.abs(bx)*.08)}pencil(c,'#c9a24a',.9,1.6);c.stroke();
+    for(const bx of[-1.3,-.65,0,.65,1.3]){const by=cy+.15+Math.abs(bx)*.08;c.fillStyle='#fff3c4';c.beginPath();circ(c,cx+bx,by-.08,.1+.012*Math.sin(ROOM.t*5+bx));c.fill();c.beginPath();c.moveTo(cx+bx,by+.02);c.lineTo(cx+bx,by+.3);pencil(c,'#9fb3bf',.7,.8);c.stroke()}c.globalAlpha=1}
+  /* staff and the counter on top of the cook's legs */
   fig(c,ROOM.cook,-5.2,-.25);
-  rpoly(c,rrect(-7.8,-1.15,-3.6,0),wash('#8a6a4a',.55),INK,30,.04,.85,1.4);c.beginPath();for(let x=-7.3;x<-3.7;x+=.55){c.moveTo(x,-1.1);c.lineTo(x,-.03)}pencil(c,'#5a432e',.4,.8);c.stroke();c.globalAlpha=1;
-  rpoly(c,[[-7.9,-1.15],[-3.5,-1.15],[-3.35,-1.42],[-7.75,-1.42]],wash('#6b4a32',.75),INK,31,.03,.85,1.2);
-  for(const[x,r,hh]of[[-7.1,.5,.8],[-6.1,.38,.6]]){rpoly(c,rrect(x-r,-1.42-hh,x+r,-1.42),wash('#9a9a92',.75),INK,32+x,.03,.8,1.1);c.fillStyle=wash('#6f6f68',.8);c.beginPath();c.ellipse(x,-1.42-hh,r,r*.28,0,0,TAU);c.fill();c.beginPath();c.ellipse(x,-1.42-hh,r,r*.28,0,0,TAU);pencil(c,INK,.8,1);c.stroke();steam(c,x,-1.42-hh-.1,3,1.1,x);c.globalAlpha=1}
+  if(ROOM.waiter)fig(c,ROOM.waiter,-1.6,1.15);
+  if(ROOM.host)fig(c,ROOM.host,7.1,1.1);
+  rpoly(c,rrect(-7.8,-1.15,-3.6,0),wash(T===3?'#4a2f22':'#8a6a4a',.6),INK,30,.04,.85,1.4);c.beginPath();for(let x=-7.3;x<-3.7;x+=.55){c.moveTo(x,-1.1);c.lineTo(x,-.03)}pencil(c,'#5a432e',.4,.8);c.stroke();c.globalAlpha=1;
+  rpoly(c,[[-7.9,-1.15],[-3.5,-1.15],[-3.35,-1.42],[-7.75,-1.42]],wash(T===3?'#2b1a10':'#6b4a32',.8),INK,31,.03,.85,1.2);
+  for(const[x,r,hh]of[[-7.1,.5,.8],[-6.1,.38,.6]]){rpoly(c,rrect(x-r,-1.42-hh,x+r,-1.42),wash(T===1?'#9a9a92':'#c9a24a',.75),INK,32+x,.03,.8,1.1);c.fillStyle=wash(T===1?'#6f6f68':'#8a6a24',.8);c.beginPath();c.ellipse(x,-1.42-hh,r,r*.28,0,0,TAU);c.fill();c.beginPath();c.ellipse(x,-1.42-hh,r,r*.28,0,0,TAU);pencil(c,INK,.8,1);c.stroke();steam(c,x,-1.42-hh-.1,3,1.1,x);c.globalAlpha=1}
   rpoly(c,rrect(-4.45,-1.8,-3.9,-1.42),wash('#b8b2a0',.8),INK,35,.02,.8,1);steam(c,-4.18,-1.85,2,.8,3);
-  /* tables, benches and diners; the player's seat is the middle table */
+  /* tables, linen, flowers and candles; the player's seat is the middle table */
   const tables=[-3.1,1.4,5.4];
   tables.forEach((tx,ti)=>{
     const ty=2.35;rpoly(c,rrect(tx-1.45,ty-1.07,tx+1.45,ty-.95),wash('#7a5a3a',.75),INK,40+ti,.03,.8,1.1);for(const lx of[-1.3,1.3]){c.beginPath();c.moveTo(tx+lx,ty-.95);c.lineTo(tx+lx,ty-.62);pencil(c,INK,.8,1.6);c.stroke()}c.globalAlpha=1;
     for(const p of ROOM.crowd)if(Math.abs(p.rx-tx)<1.5){p.act=(Math.floor(ROOM.t/2.4+p.ph)%3===0)?null:'eat';p.dx=p.x=p.rx;fig(c,p,p.rx,ty-.55)}
     if(ti===1){ROOM.roomMe.act=eating.dish&&eating.t>.5&&Math.floor(ROOM.t*2)%2?'eat':null;fig(c,ROOM.roomMe,tx-.7,ty-.55)}
-    rpoly(c,[[tx-1.5,ty-.95],[tx+1.5,ty-.95],[tx+1.2,ty-1.52],[tx-1.2,ty-1.52]],wash('#a88456',.65),INK,50+ti,.03,.85,1.3);
-    c.beginPath();for(let i=1;i<6;i++){const f=i/6;c.moveTo(tx-1.5+3*f,ty-.95);c.lineTo(tx-1.2+2.4*f,ty-1.52)}pencil(c,'#6b4a32',.28,.7);c.stroke();c.globalAlpha=1;
-    rpoly(c,rrect(tx-1.5,ty-.95,tx+1.5,ty-.82),wash('#6b4a32',.8),INK,70+ti,.02,.85,1.1);
+    rpoly(c,[[tx-1.5,ty-.95],[tx+1.5,ty-.95],[tx+1.2,ty-1.52],[tx-1.2,ty-1.52]],wash(T===1?'#a88456':ST.cloth,T===1?.65:.9),INK,50+ti,.03,.85,1.3);
+    if(T===1){c.beginPath();for(let i=1;i<6;i++){const f=i/6;c.moveTo(tx-1.5+3*f,ty-.95);c.lineTo(tx-1.2+2.4*f,ty-1.52)}pencil(c,'#6b4a32',.28,.7);c.stroke();c.globalAlpha=1}
+    rpoly(c,rrect(tx-1.5,ty-.95,tx+1.5,T===1?ty-.82:ty-.5),T===1?wash('#6b4a32',.8):wash(ST.cloth,.85),INK,70+ti,.02,.85,1.1);   // apron, or the cloth hanging down
+    if(T>1){c.beginPath();for(let i=1;i<10;i++){c.moveTo(tx-1.5+i*.3,ty-.95);c.lineTo(tx-1.5+i*.3,ty-.5)}pencil(c,shade(ST.cloth,.7),.3,.7);c.stroke();c.globalAlpha=1}
     c.fillStyle='#f4f1ea';c.beginPath();c.rect(tx+.85,ty-1.5,.14,.2);c.fill();pencil(c,INK,.7,.8);c.stroke();c.globalAlpha=1;
-    if(ti===1){if(eating.dish){dishArt(c,eating.dish,tx-.1,ty-1.25);steam(c,tx-.1,ty-1.4,3,.9,5)}}else dishArt(c,MENU[ti===0?0:3],tx-.1+(ti?0:.3),ty-1.25)});
-  /* the cook's bubble */
-  if(ROOM.sayT>0&&ROOM.say){const tw=RTW(c,ROOM.say,.3,LANG==='en'?F_EN:F_BN)+.5,bx=-5.2,by=-3.1,pts=rrect(bx-tw/2+.8,by-.28,bx+tw/2+.8,by+.28);c.globalAlpha=Math.min(1,ROOM.sayT);rpoly(c,pts,'#f7f2e6',INK,80,.03,.9,1.2);rpoly(c,[[bx,by+.28],[bx+.15,by+.28],[bx-.1,by+.58]],'#f7f2e6',INK,81,.01,.9,1.1);RT(c,bx+.8,by,ROOM.say,.3,INK,'center',LANG==='en'?F_EN:F_BN);c.globalAlpha=1}
+    if(T===2){c.fillStyle='#4a7a3a';c.beginPath();c.rect(tx-.95,ty-1.55,.12,.22);c.fill();c.fillStyle='#e0572a';c.beginPath();circ(c,tx-.89,ty-1.6,.1);c.fill();c.fillStyle='#e8c98a';c.beginPath();circ(c,tx-.78,ty-1.57,.07);c.fill()}
+    if(T===3){c.fillStyle='#f4f1ea';c.fillRect(tx-.95,ty-1.62,.1,.3);c.fillStyle='#ffb347';c.beginPath();c.ellipse(tx-.9,ty-1.68+.02*Math.sin(ROOM.t*9+ti),.05,.09,0,0,TAU);c.fill();c.fillStyle='rgba(255,200,100,.25)';c.beginPath();circ(c,tx-.9,ty-1.68,.3);c.fill();
+      for(const gx of[.55,.75]){c.beginPath();c.moveTo(tx+gx,ty-1.5);c.lineTo(tx+gx,ty-1.35);c.moveTo(tx+gx-.06,ty-1.62);c.lineTo(tx+gx+.06,ty-1.62);c.lineTo(tx+gx,ty-1.5);c.closePath();pencil(c,'#9fb3bf',.9,1);c.stroke();c.globalAlpha=1}}
+    if(ti===1){if(eating.dish){dishArt(c,eating.dish,tx-.1,ty-1.25);steam(c,tx-.1,ty-1.4,3,.9,5)}}else dishArt(c,menu[ti===0?0:3],tx-.1+(ti?0:.3),ty-1.25)});
+  /* plants in the corners of the fine-dining room */
+  if(T===3)for(const px of[-7.5,7.5]){rpoly(c,[[px-.35,2.2],[px+.35,2.2],[px+.25,3.1],[px-.25,3.1]],wash('#8a5a3a',.85),INK,95+px,.02,.8,1.1);c.fillStyle=wash('#4a7a3a',.8);c.beginPath();c.ellipse(px,1.4,.55,.9,0,0,TAU);c.fill();c.beginPath();c.ellipse(px,1.4,.55,.9,0,0,TAU);pencil(c,INK,.6,.9);c.stroke();c.globalAlpha=1}
+  /* the speaker's bubble */
+  if(ROOM.sayT>0&&ROOM.say){const tw=RTW(c,ROOM.say,.3,LANG==='en'?F_EN:F_BN)+.5,bx=ROOM.sayAt[0],by=ROOM.sayAt[1],pts=rrect(bx-tw/2+.8,by-.28,bx+tw/2+.8,by+.28);c.globalAlpha=Math.min(1,ROOM.sayT);rpoly(c,pts,'#f7f2e6',INK,80,.03,.9,1.2);rpoly(c,[[bx,by+.28],[bx+.15,by+.28],[bx-.1,by+.58]],'#f7f2e6',INK,81,.01,.9,1.1);RT(c,bx+.8,by,ROOM.say,.3,INK,'center',LANG==='en'?F_EN:F_BN);c.globalAlpha=1}
   /* paper grain and vignette, as on the street */
   c.setTransform(DPR,0,0,DPR,0,0);if(!grainPat)grainPat=c.createPattern(grain,'repeat');c.globalCompositeOperation='multiply';c.globalAlpha=.55;c.fillStyle=grainPat;c.fillRect(0,0,W,H);
   c.globalAlpha=1;const vg=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(150,130,100,.35)');c.fillStyle=vg;c.fillRect(0,0,W,H);c.globalCompositeOperation='source-over'}
 
 /* ---------------- status bar: wallet, clock, energy, goal ---------------- */
-const STAT={wallet:300,energy:100,goal:0,idle:0,tiredWarned:false,ate:false};
+const STAT={wallet:300,energy:100,goal:0,idle:0,tiredWarned:false,ate:false,fine:false};
 const bnTaka=n=>bnNum(Math.round(n));
 function addMoney(n){STAT.wallet=Math.max(0,STAT.wallet+n)}
 function addEnergy(n){STAT.energy=clamp(STAT.energy+n,0,100)}
@@ -2421,10 +2540,11 @@ const bldCentre=en=>{const b=buildings.find(b=>b.name&&b.name[1]===en);return b?
 const siteCentre=F=>F?FW(F,F.L/2,F.D/2):null;
 const GOALS=[
  {bn:'শাপলা ফোয়ারার কাছে যান',en:'Walk to the Shapla fountain',at:()=>[0,0],r:24,pay:0},
- {bn:'মায়ের দোয়া হোটেলে খেয়ে নিন',en:'Eat at Mayer Doa Hotel',at:()=>RESTO.entry,r:0,pay:0,done:()=>STAT.ate},
+ {bn:'কোনো রেস্তোরাঁয় খেয়ে নিন (মায়ের দোয়া হোটেল কাছেই)',en:'Eat a meal at a restaurant (Mayer Doa Hotel is close)',at:()=>RESTO.entry,r:0,pay:0,done:()=>STAT.ate},
  {bn:'বাংলাদেশ ব্যাংকে যান',en:'Walk to Bangladesh Bank',at:()=>bldCentre('Bangladesh Bank'),r:40,pay:100},
  {bn:'বায়তুল মোকাররমে যান',en:'Walk to Baitul Mukarram mosque',at:()=>siteCentre(sites.baitul),r:55,pay:100},
  {bn:'কমলাপুর রেল স্টেশনে যান',en:'Walk to Kamalapur railway station',at:()=>siteCentre(sites.kamalapur),r:55,pay:100},
+ {bn:'দামি রেস্তোরাঁ দ্য স্কাইলাইনে খান',en:'Dine at The Skyline, the fine restaurant',at:()=>FINE&&FINE.entry,r:0,pay:0,done:()=>STAT.fine},
 ];
 const goalNow=()=>{while(STAT.goal<GOALS.length&&!GOALS[STAT.goal].at())STAT.goal++;return STAT.goal<GOALS.length?GOALS[STAT.goal]:null};   // a goal whose place is missing is skipped
 function goalPos(){const g=goalNow();return g?g.at():null}

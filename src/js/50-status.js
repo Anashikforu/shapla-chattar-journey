@@ -1,6 +1,6 @@
 
 /* ---------------- status bar: wallet, clock, energy, goal ---------------- */
-const STAT={wallet:300,energy:100,goal:0,idle:0,tiredWarned:false,ate:false};
+const STAT={wallet:300,energy:100,goal:0,idle:0,tiredWarned:false,ate:false,fine:false};
 const bnTaka=n=>bnNum(Math.round(n));
 function addMoney(n){STAT.wallet=Math.max(0,STAT.wallet+n)}
 function addEnergy(n){STAT.energy=clamp(STAT.energy+n,0,100)}
@@ -18,10 +18,11 @@ const bldCentre=en=>{const b=buildings.find(b=>b.name&&b.name[1]===en);return b?
 const siteCentre=F=>F?FW(F,F.L/2,F.D/2):null;
 const GOALS=[
  {bn:'শাপলা ফোয়ারার কাছে যান',en:'Walk to the Shapla fountain',at:()=>[0,0],r:24,pay:0},
- {bn:'মায়ের দোয়া হোটেলে খেয়ে নিন',en:'Eat at Mayer Doa Hotel',at:()=>RESTO.entry,r:0,pay:0,done:()=>STAT.ate},
+ {bn:'কোনো রেস্তোরাঁয় খেয়ে নিন (মায়ের দোয়া হোটেল কাছেই)',en:'Eat a meal at a restaurant (Mayer Doa Hotel is close)',at:()=>RESTO.entry,r:0,pay:0,done:()=>STAT.ate},
  {bn:'বাংলাদেশ ব্যাংকে যান',en:'Walk to Bangladesh Bank',at:()=>bldCentre('Bangladesh Bank'),r:40,pay:100},
  {bn:'বায়তুল মোকাররমে যান',en:'Walk to Baitul Mukarram mosque',at:()=>siteCentre(sites.baitul),r:55,pay:100},
  {bn:'কমলাপুর রেল স্টেশনে যান',en:'Walk to Kamalapur railway station',at:()=>siteCentre(sites.kamalapur),r:55,pay:100},
+ {bn:'দামি রেস্তোরাঁ দ্য স্কাইলাইনে খান',en:'Dine at The Skyline, the fine restaurant',at:()=>FINE&&FINE.entry,r:0,pay:0,done:()=>STAT.fine},
 ];
 const goalNow=()=>{while(STAT.goal<GOALS.length&&!GOALS[STAT.goal].at())STAT.goal++;return STAT.goal<GOALS.length?GOALS[STAT.goal]:null};   // a goal whose place is missing is skipped
 function goalPos(){const g=goalNow();return g?g.at():null}
