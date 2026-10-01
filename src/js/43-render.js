@@ -32,6 +32,8 @@ function render(){
   if(z>2)for(const d of dogs)if(onScreen(d.x,d.y))items.push({d:D(d.x,d.y),t:'dog',o:d});
   for(const sp of specials){if(sp.kind==='bridge'&&z<1.6)continue;if(inView(...sp.bb()))items.push({d:sp.depth(),t:'sx',o:sp})}
   if(fields.length&&z>1.8){const F=fields[0];for(const a of[2,F.L-2]){const g=fieldPt(a,F.D/2);if(onScreen(g[0],g[1]))items.push({d:D(g[0],g[1]),t:'goal',o:{a}})}if(!players[0]?.hidden&&onScreen(ball.x,ball.y))items.push({d:D(ball.x,ball.y),t:'ball',o:ball})}
+  if(onScreen(me.dx,me.dy))items.push({d:D(me.dx,me.dy),t:'me',o:me});
+  drawGoalMark(ctx);
   items.sort((a,b)=>a.d-b.d);
   const fo=cam.follow,fX=fo?(fo.fixed?fo.x:fo.dx):cam.x,fY=fo?(fo.fixed?fo.y:fo.dy):cam.y,hw=W*.16/z,hh=H*.1/z;let budget=5;
   
@@ -55,14 +57,15 @@ function render(){
     case 'goal':drawGoal(ctx,o);break;
     case 'sx':o.draw(ctx,lodT);break;
     case 'ball':drawBall(ctx);break;
+    case 'me':drawAvatar(ctx,lodP);break;
   }}
-  if(z>2.2)drawCrows(ctx);ctx.globalAlpha=1;
+  if(z>2.2)drawCrows(ctx);drawAvatarMarker(ctx);ctx.globalAlpha=1;
   ctx.setTransform(DPR,0,0,DPR,0,0);
   if(rain>0){ctx.globalCompositeOperation='multiply';ctx.fillStyle=`rgba(150,160,178,${.38*rain})`;ctx.fillRect(0,0,W,H)}
   const sky=keyf(SKY_K,HOUR);if(sky[3]>.01){ctx.globalCompositeOperation='multiply';ctx.fillStyle=`rgba(${sky[0]|0},${sky[1]|0},${sky[2]|0},${sky[3]})`;ctx.fillRect(0,0,W,H)}
     ctx.globalCompositeOperation='source-over';if(L>.02)lightsPass(items,L);ctx.setTransform(DPR,0,0,DPR,0,0);
   if(rain>.02)drawRain(ctx);
-  if(cam.follow){const f=cam.follow,x=f.fixed?f.x:f.dx,y=f.fixed?f.y:f.dy,s=toScreen(x,y);ctx.beginPath();ctx.ellipse(s[0],s[1],Math.max(10,(f.len||1)*z*.7),Math.max(5,(f.len||1)*z*.35),0,0,TAU);ctx.strokeStyle='#b8432f';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
+  if(cam.follow&&cam.follow!==me){const f=cam.follow,x=f.fixed?f.x:f.dx,y=f.fixed?f.y:f.dy,s=toScreen(x,y);ctx.beginPath();ctx.ellipse(s[0],s[1],Math.max(10,(f.len||1)*z*.7),Math.max(5,(f.len||1)*z*.35),0,0,TAU);ctx.strokeStyle='#b8432f';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
   drawLabels(ctx,z);drawBubbles(ctx,z);
   if(!grainPat)grainPat=ctx.createPattern(grain,'repeat');ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.55;ctx.fillStyle=grainPat;ctx.fillRect(0,0,W,H);
   ctx.globalAlpha=1;const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(150,130,100,.35)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';

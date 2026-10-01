@@ -9,8 +9,8 @@ cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endP
 function zoomAt(sx,sy,f){const d0=scrToWorldDelta(sx-W/2,sy-H/2,cam.tz),w=[cam.tx+d0[0],cam.ty+d0[1]];cam.tz=clamp(cam.tz*f,ZMIN,ZMAX);if(!cam.follow){const d1=scrToWorldDelta(sx-W/2,sy-H/2,cam.tz);cam.tx=w[0]-d1[0];cam.ty=w[1]-d1[1]}}
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*(e.ctrlKey?.01:.0016)))},{passive:false});
 cv.addEventListener('dblclick',e=>zoomAt(e.clientX,e.clientY,2.2));
-addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'&&e.target.type!=='range')return;const k=e.key,m=60/cam.zoom;
-  const mv=(dx,dy)=>{const w=scrToWorldDelta(dx,dy,1);cam.tx+=w[0];cam.ty+=w[1];unfollow()};if(k==='ArrowLeft'||k==='a')mv(-m,0);else if(k==='ArrowRight'||k==='d')mv(m,0);else if(k==='ArrowUp'||k==='w')mv(0,-m);else if(k==='ArrowDown'||k==='s')mv(0,m);else if(k==='q')rotateView(-1);else if(k==='e')rotateView(1)
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'&&e.target.type!=='range')return;const k=e.key;
+  if(e.ctrlKey||e.metaKey||e.altKey)return;if(k==='q')rotateView(-1);else if(k==='e')rotateView(1)
   else if(k==='+'||k==='='){zoomAt(W/2,H/2,1.4)}else if(k==='-'||k==='_'){zoomAt(W/2,H/2,1/1.4)}else if(k==='Escape'){unfollow();document.getElementById('voicePanel').hidden=true}else if(k===' '&&e.target===document.body){e.preventDefault();togglePause()}});
 function unfollow(){if(cam.follow){cam.follow=null;hideCard()}}
 document.getElementById('zin').onclick=()=>zoomAt(W/2,H/2,1.6);document.getElementById('zout').onclick=()=>zoomAt(W/2,H/2,1/1.6);
@@ -19,7 +19,7 @@ function pick(sx,sy){
   const test=(o,x,y,z)=>{const s=toScreen(x+KX*z,y-KZ*z),d=Math.hypot(s[0]-sx,s[1]-sy);if(d<bd){bd=d;best=o}};
   if(cam.zoom>1.4){for(const p of peds)if(onScreen(p.dx,p.dy))test(p,p.dx,p.dy,.9);for(const f of fixedPeople)if(!f.hidden&&onScreen(f.x,f.y))test(f,f.x,f.y,.8)}
   for(const v of vehicles)if(onScreen(v.dx,v.dy))test(v,v.dx,v.dy,1);
-  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else unfollow();
+  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else{unfollow();const w=toWorld(sx,sy);walkTo(w[0],w[1])}
 }
 function follow(o){cam.follow=o;if(cam.tz<9)cam.tz=10;showCard(o)}
 document.getElementById('btnFollow').onclick=()=>{

@@ -90,12 +90,12 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 }
 </style>
 
-<canvas id="scene" aria-label="Live pencil sketch of Shapla Chattar in Motijheel, Dhaka. Drag to pan, scroll to zoom, click a person or vehicle to follow them."></canvas>
+<canvas id="scene" aria-label="Live pencil sketch of Shapla Chattar in Motijheel, Dhaka. Walk with WASD or arrow keys, or tap the ground. Drag to pan, scroll to zoom, click a person or vehicle to follow them."></canvas>
 
 <header class="note title">
   <h1><span class="bn">শাপলা চত্বর</span><span class="en">Motijheel, Dhaka</span></h1>
   <p class="clock"><span class="bn" id="clockBn">সকাল ৮:৩০</span> · <span id="clockEn">8:30 AM</span> <span id="weatherTxt"></span></p>
-  <p class="hint">Drag to wander · scroll or pinch to zoom · click anyone to follow</p>
+  <p class="hint">WASD or tap to walk · drag to look around · scroll or pinch to zoom · click anyone to follow</p>
 </header>
 
 <button id="toolsToggle" aria-controls="tools" aria-expanded="false">Controls</button>
@@ -129,6 +129,10 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
   <div class="row">
     <button id="btnLang">Speech: বাংলা</button>
     <button id="btnFollow">Follow someone</button>
+  </div>
+  <div class="row">
+    <button id="btnMe">Find me (F)</button>
+    <span style="font-size:12px;align-self:center;text-align:center;color:var(--graphite-soft)">Shift to run</span>
   </div>
 </aside>
 
@@ -1407,12 +1411,12 @@ function step(dt){
   for(let i=events.length-1;i>=0;i--)if(events[i].t<=simT){const e=events[i];events.splice(i,1);e.f()}
   spawnVehicles(dt);
   const tgt=pedTarget();if(peds.length<tgt){for(let i=0;i<6&&peds.length<tgt;i++)spawnPed()}else if(peds.length>tgt+30){const p=peds[(Math.random()*peds.length)|0];if(p.st==='walk'&&!onScreen(p.x,p.y)&&p!==cam.follow)removePed(p)}
-  grid.clear();for(const v of vehicles)gridAdd(v);for(const o of staticObs)gridAdd(o);for(const p of peds)if(p.onRoad)gridAdd({x:p.x,y:p.y,len:.6,wid:.6,ped:true});
+  grid.clear();for(const v of vehicles)gridAdd(v);for(const o of staticObs)gridAdd(o);for(const p of peds)if(p.onRoad)gridAdd({x:p.x,y:p.y,len:.6,wid:.6,ped:true});if(cellAt(me.x,me.y)===2)gridAdd({x:me.x,y:me.y,len:.7,wid:.7,ped:true});
   for(const v of vehicles)updVehicle(v,dt);
   for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead){const v=vehicles[i];if(cam.follow===v){cam.follow=null;toast('They rode off the edge of the sketch.');hideCard()}vehicles.splice(i,1)}
   STEPN++;for(let i=0;i<peds.length;i++){const p=peds[i];if(Math.abs(p.x-cam.x)>260||Math.abs(p.y-cam.y)>200){if((i+STEPN)%3===0)updPed(p,dt*3)}else updPed(p,dt)}
   for(let i=peds.length-1;i>=0;i--)if(peds[i].dead)peds.splice(i,1);
-  updFixed(dt);updPlayers(dt);updCrowds(dt);updTrain(dt);updBridges(dt);updSnatch(dt);updMetro(dt);updAnimals(dt);
+  updFixed(dt);updAvatar(dt);updPlayers(dt);updCrowds(dt);updTrain(dt);updBridges(dt);updSnatch(dt);updMetro(dt);updAnimals(dt);
   for(let i=bubbles.length-1;i>=0;i--){const b=bubbles[i];if(simT-b.t0>b.dur||(b.owner&&b.owner.dead))bubbles.splice(i,1)}
   const k=Math.min(1,dt*8);for(const v of vehicles){v.dx+=(v.x-v.dx)*k;v.dy+=(v.y-v.dy)*k}for(const p of peds){p.dx+=(p.x-p.dx)*k;p.dy+=(p.y-p.dy)*k}
   audioTick(dt);
@@ -1686,8 +1690,8 @@ cv.addEventListener('pointerup',endPtr);cv.addEventListener('pointercancel',endP
 function zoomAt(sx,sy,f){const d0=scrToWorldDelta(sx-W/2,sy-H/2,cam.tz),w=[cam.tx+d0[0],cam.ty+d0[1]];cam.tz=clamp(cam.tz*f,ZMIN,ZMAX);if(!cam.follow){const d1=scrToWorldDelta(sx-W/2,sy-H/2,cam.tz);cam.tx=w[0]-d1[0];cam.ty=w[1]-d1[1]}}
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.clientX,e.clientY,Math.exp(-e.deltaY*(e.ctrlKey?.01:.0016)))},{passive:false});
 cv.addEventListener('dblclick',e=>zoomAt(e.clientX,e.clientY,2.2));
-addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'&&e.target.type!=='range')return;const k=e.key,m=60/cam.zoom;
-  const mv=(dx,dy)=>{const w=scrToWorldDelta(dx,dy,1);cam.tx+=w[0];cam.ty+=w[1];unfollow()};if(k==='ArrowLeft'||k==='a')mv(-m,0);else if(k==='ArrowRight'||k==='d')mv(m,0);else if(k==='ArrowUp'||k==='w')mv(0,-m);else if(k==='ArrowDown'||k==='s')mv(0,m);else if(k==='q')rotateView(-1);else if(k==='e')rotateView(1)
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'&&e.target.type!=='range')return;const k=e.key;
+  if(e.ctrlKey||e.metaKey||e.altKey)return;if(k==='q')rotateView(-1);else if(k==='e')rotateView(1)
   else if(k==='+'||k==='='){zoomAt(W/2,H/2,1.4)}else if(k==='-'||k==='_'){zoomAt(W/2,H/2,1/1.4)}else if(k==='Escape'){unfollow();document.getElementById('voicePanel').hidden=true}else if(k===' '&&e.target===document.body){e.preventDefault();togglePause()}});
 function unfollow(){if(cam.follow){cam.follow=null;hideCard()}}
 document.getElementById('zin').onclick=()=>zoomAt(W/2,H/2,1.6);document.getElementById('zout').onclick=()=>zoomAt(W/2,H/2,1/1.6);
@@ -1696,7 +1700,7 @@ function pick(sx,sy){
   const test=(o,x,y,z)=>{const s=toScreen(x+KX*z,y-KZ*z),d=Math.hypot(s[0]-sx,s[1]-sy);if(d<bd){bd=d;best=o}};
   if(cam.zoom>1.4){for(const p of peds)if(onScreen(p.dx,p.dy))test(p,p.dx,p.dy,.9);for(const f of fixedPeople)if(!f.hidden&&onScreen(f.x,f.y))test(f,f.x,f.y,.8)}
   for(const v of vehicles)if(onScreen(v.dx,v.dy))test(v,v.dx,v.dy,1);
-  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else unfollow();
+  if(best){cam.follow=best;if(cam.tz<7)cam.tz=Math.max(cam.tz,9);showCard(best)}else{unfollow();const w=toWorld(sx,sy);walkTo(w[0],w[1])}
 }
 function follow(o){cam.follow=o;if(cam.tz<9)cam.tz=10;showCard(o)}
 document.getElementById('btnFollow').onclick=()=>{
@@ -1859,6 +1863,8 @@ function render(){
   if(z>2)for(const d of dogs)if(onScreen(d.x,d.y))items.push({d:D(d.x,d.y),t:'dog',o:d});
   for(const sp of specials){if(sp.kind==='bridge'&&z<1.6)continue;if(inView(...sp.bb()))items.push({d:sp.depth(),t:'sx',o:sp})}
   if(fields.length&&z>1.8){const F=fields[0];for(const a of[2,F.L-2]){const g=fieldPt(a,F.D/2);if(onScreen(g[0],g[1]))items.push({d:D(g[0],g[1]),t:'goal',o:{a}})}if(!players[0]?.hidden&&onScreen(ball.x,ball.y))items.push({d:D(ball.x,ball.y),t:'ball',o:ball})}
+  if(onScreen(me.dx,me.dy))items.push({d:D(me.dx,me.dy),t:'me',o:me});
+  drawGoalMark(ctx);
   items.sort((a,b)=>a.d-b.d);
   const fo=cam.follow,fX=fo?(fo.fixed?fo.x:fo.dx):cam.x,fY=fo?(fo.fixed?fo.y:fo.dy):cam.y,hw=W*.16/z,hh=H*.1/z;let budget=5;
   
@@ -1882,14 +1888,15 @@ function render(){
     case 'goal':drawGoal(ctx,o);break;
     case 'sx':o.draw(ctx,lodT);break;
     case 'ball':drawBall(ctx);break;
+    case 'me':drawAvatar(ctx,lodP);break;
   }}
-  if(z>2.2)drawCrows(ctx);ctx.globalAlpha=1;
+  if(z>2.2)drawCrows(ctx);drawAvatarMarker(ctx);ctx.globalAlpha=1;
   ctx.setTransform(DPR,0,0,DPR,0,0);
   if(rain>0){ctx.globalCompositeOperation='multiply';ctx.fillStyle=`rgba(150,160,178,${.38*rain})`;ctx.fillRect(0,0,W,H)}
   const sky=keyf(SKY_K,HOUR);if(sky[3]>.01){ctx.globalCompositeOperation='multiply';ctx.fillStyle=`rgba(${sky[0]|0},${sky[1]|0},${sky[2]|0},${sky[3]})`;ctx.fillRect(0,0,W,H)}
     ctx.globalCompositeOperation='source-over';if(L>.02)lightsPass(items,L);ctx.setTransform(DPR,0,0,DPR,0,0);
   if(rain>.02)drawRain(ctx);
-  if(cam.follow){const f=cam.follow,x=f.fixed?f.x:f.dx,y=f.fixed?f.y:f.dy,s=toScreen(x,y);ctx.beginPath();ctx.ellipse(s[0],s[1],Math.max(10,(f.len||1)*z*.7),Math.max(5,(f.len||1)*z*.35),0,0,TAU);ctx.strokeStyle='#b8432f';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
+  if(cam.follow&&cam.follow!==me){const f=cam.follow,x=f.fixed?f.x:f.dx,y=f.fixed?f.y:f.dy,s=toScreen(x,y);ctx.beginPath();ctx.ellipse(s[0],s[1],Math.max(10,(f.len||1)*z*.7),Math.max(5,(f.len||1)*z*.35),0,0,TAU);ctx.strokeStyle='#b8432f';ctx.lineWidth=1.6;ctx.setLineDash([5,4]);ctx.stroke();ctx.setLineDash([])}
   drawLabels(ctx,z);drawBubbles(ctx,z);
   if(!grainPat)grainPat=ctx.createPattern(grain,'repeat');ctx.globalCompositeOperation='multiply';ctx.globalAlpha=.55;ctx.fillStyle=grainPat;ctx.fillRect(0,0,W,H);
   ctx.globalAlpha=1;const vg=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.35,W/2,H/2,Math.max(W,H)*.75);vg.addColorStop(0,'rgba(255,255,255,0)');vg.addColorStop(1,'rgba(150,130,100,.35)');ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);ctx.globalCompositeOperation='source-over';
@@ -1911,7 +1918,7 @@ function buildMini(){const s=mini.width,k=(2*E+40)/s;miniBase=document.createEle
   for(let j=0;j<s;j++)for(let i=0;i<s;i++){const x=(i-s/2)*k,y=(j-s/2)*k,m=cellAt(x,y),col=COL[m>3?0:m],o=(j*s+i)*4;img.data[o]=col[0];img.data[o+1]=col[1];img.data[o+2]=col[2];img.data[o+3]=255}
   c.putImageData(img,0,0);c.setTransform(1/k,0,0,1/k,s/2,s/2);for(const b of buildings){c.fillStyle=b.landmark?'#b8432f':wash(b.parts[0].col,.85);fillPoly(c,b.foot)}}
 function drawMini(){const s=mini.width,k=s/(2*E+40);mctx.setTransform(1,0,0,1,0,0);mctx.drawImage(miniBase,0,0);mctx.setTransform(k,0,0,k,s/2,s/2);
-  mctx.fillStyle='#2f2d2a';for(const v of vehicles)if(!v.parked)mctx.fillRect(v.x-2,v.y-2,4,4);const q=[toWorld(0,0),toWorld(W,0),toWorld(W,H),toWorld(0,H)];mctx.strokeStyle='#b8432f';mctx.lineWidth=3/k;mctx.beginPath();ppath(mctx,q);mctx.stroke()}
+  mctx.fillStyle='#2f2d2a';for(const v of vehicles)if(!v.parked)mctx.fillRect(v.x-2,v.y-2,4,4);const q=[toWorld(0,0),toWorld(W,0),toWorld(W,H),toWorld(0,H)];mctx.strokeStyle='#b8432f';mctx.lineWidth=3/k;mctx.beginPath();ppath(mctx,q);mctx.stroke();mctx.fillStyle='#b8432f';mctx.beginPath();circ(mctx,me.x,me.y,5/k);mctx.fill();mctx.strokeStyle='#f7f2e6';mctx.lineWidth=1.5/k;mctx.stroke()}
 mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect(),k=(2*E+40)/r.width;cam.follow=null;hideCard();cam.tx=(e.clientX-r.left-r.width/2)*k;cam.ty=(e.clientY-r.top-r.height/2)*k-10});
 
 /* ---------------- info card ---------------- */
@@ -1955,6 +1962,7 @@ function boot(){
   for(let k=0;k<260;k++){spawnVehicles(.2);grid.clear();for(const v of vehicles)gridAdd(v);for(const o of staticObs)gridAdd(o);for(const v of vehicles)updVehicle(v,.2);for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead)vehicles.splice(i,1);phaseT+=.2;if(phaseT>=PHASE_LEN){phaseT=0;phase=1-phase}}
   for(const v of vehicles){v.dx=v.x;v.dy=v.y}bubbles.length=0;events.length=0;
   for(const b of buildings)makeSprite(b);
+  initAvatar();
   simT=0;updateVoiceUI();loadBundled();
   $('loading').classList.add('done');setTimeout(()=>$('loading').remove(),700);
   let last=performance.now(),acc=0,uiT=0,miniT=0;
@@ -2016,7 +2024,7 @@ function updateClock(){const h=Math.floor(HOUR),m=Math.floor((HOUR-h)*60);const 
 
 /* ---------------- save & load (browser storage; safe when unavailable) ---------------- */
 const SAVE_KEY='shapla-journey-v1';
-function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref}))}catch(e){}}
+function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:1,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me}))}catch(e){}}
 function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}if(!d||d.v!==1)return false;
   if(typeof d.hour==='number')HOUR=d.hour%24;
   if(d.cam){cam.x=cam.tx=d.cam.x;cam.y=cam.ty=d.cam.y;cam.zoom=cam.tz=clamp(d.cam.z,ZMIN,ZMAX)}
@@ -2026,9 +2034,106 @@ function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)|
   if(!!d.weekend!==FRIDAY)$('btnFriday').click();
   for(let i=0;i<3&&BMODE!==d.bmode;i++)cycleB();
   if(d.sound===false&&soundPref){soundPref=false;syncSoundUI()}
+  if(d.me&&typeof d.me.x==='number'&&typeof d.me.y==='number'&&!navAt(d.me.x,d.me.y)){me.x=me.dx=d.me.x;me.y=me.dy=d.me.y}
+  if(d.follow===false)cam.follow=null;else{cam.x=cam.tx=me.x+KX;cam.y=cam.ty=me.y-KZ}
   const dir=(d.dir|0)%4,ang=(d.ang|0)%ANGLES.length;
   if(dir!==VIEW.dir||ang!==angIdx){VIEW.dir=dir;VIEW.th=dir*Math.PI/2;angIdx=ang;const a=ANGLES[ang];VIEW.mode=a[0];VIEW.kx0=a[2];VIEW.kz0=a[3];$('btnAngle').textContent='Angle: '+a[1];applyView('Restoring your view…')}
   return true}
 {const w=setInterval(()=>{if(document.getElementById('loading'))return;clearInterval(w);loadState();setInterval(saveState,3000);addEventListener('pagehide',saveState);addEventListener('visibilitychange',()=>{if(document.hidden)saveState()})},200)}
+
+/* ---------------- player avatar: walk with WASD / arrows, or tap the ground ---------------- */
+const nav=new Uint8Array(MW*MW);   // 1 = the avatar cannot stand here (building lots, island, trunks, stalls)
+const me={role:'me',name:'You',x:0,y:0,dx:0,dy:0,fc:1,ph:0,pose:'stand',act:null,spd:0,path:null,goal:null,stuck:0,look:null};
+const navAt=(x,y)=>{const k=mk(x,y);return k<0||nav[k]===1||Math.abs(x)>E-8||Math.abs(y)>E-8};   // true = blocked
+function initNav(){
+  for(let k=0;k<nav.length;k++)if(occ[k]||mask[k]===3)nav[k]=1;
+  const cells=(x,y,r,f)=>{for(let j=Math.floor(y-r+MO);j<=Math.floor(y+r+MO);j++)for(let i=Math.floor(x-r+MO);i<=Math.floor(x+r+MO);i++){if(i<0||j<0||i>=MW||j>=MW)continue;if(f(i+.5-MO-x,j+.5-MO-y))nav[j*MW+i]=1}};
+  for(const t of trees)cells(t.x,t.y,.7,(u,v)=>u*u+v*v<=.49);
+  for(const s of stalls){const hw=s.w/2+.2,hd=s.d/2+.2;cells(s.x,s.y,Math.hypot(hw,hd),(u,v)=>Math.abs(u*s.tx+v*s.ty)<=hw&&Math.abs(u*s.nx+v*s.ny)<=hd)}
+  for(const o of staticObs){const r=Math.min(o.len,o.wid)/2;cells(o.x,o.y,r,(u,v)=>u*u+v*v<=r*r)}
+}
+function nearestFree(x,y,R=16){if(!navAt(x,y))return[x,y];for(let r=1;r<=R;r++)for(let a=0,n=r*8;a<n;a++){const t=a/n*TAU,px=x+Math.cos(t)*r,py=y+Math.sin(t)*r;if(!navAt(px,py))return[px,py]}return null}
+function initAvatar(){
+  initNav();
+  const L=makeLook('office',false);Object.assign(L,{skin:'#a0694a',h:1.66,dress:'pants',c1:'#b8432f',c2:'#3a3a3f',hair:'#1f1b18',cap:false,beard:false,tie:false,gamchha:false,bag:true,hasUmb:true,umbCol:'#b8432f'});me.look=L;
+  let p=null;for(let r=1;r<=80&&!p;r++)for(let a=0,n=r*8;a<n&&!p;a++){const t=a/n*TAU,x=Math.cos(t)*r,y=-22+Math.sin(t)*r;if(!navAt(x,y)&&cellAt(x,y)===1)p=[x,y]}   // nearest footpath to the first view
+  p=p||nearestFree(0,-22,60)||[0,-45];me.x=me.dx=p[0];me.y=me.dy=p[1];
+  cam.follow=me;cam.x=cam.tx=me.x+KX;cam.y=cam.ty=me.y-KZ;
+}
+
+/* A* over the 1 m nav grid, then string-pulled into a few straight legs */
+const AG=new Float32Array(MW*MW),ASEEN=new Uint32Array(MW*MW),APAR=new Int32Array(MW*MW);let ASEEN_ID=0;
+function findPath(ax,ay,bx,by){
+  const s=mk(ax,ay),g=mk(bx,by);if(s<0||g<0)return null;const gi=g%MW,gj=(g/MW)|0,id=++ASEEN_ID;
+  const hk=[],hv=[];
+  const push=(f,n)=>{let i=hk.length;hk.push(f);hv.push(n);while(i>0){const p=(i-1)>>1;if(hk[p]<=f)break;hk[i]=hk[p];hv[i]=hv[p];i=p}hk[i]=f;hv[i]=n};
+  const pop=()=>{const top=hv[0],f=hk.pop(),n=hv.pop();if(hk.length){let i=0;for(;;){let c=2*i+1;if(c>=hk.length)break;if(c+1<hk.length&&hk[c+1]<hk[c])c++;if(hk[c]>=f)break;hk[i]=hk[c];hv[i]=hv[c];i=c}hk[i]=f;hv[i]=n}return top};
+  const h=(i,j)=>{const dx=Math.abs(i-gi),dy=Math.abs(j-gj);return(dx+dy+(Math.SQRT2-2)*Math.min(dx,dy))*1.15};
+  ASEEN[s]=id;AG[s]=0;APAR[s]=-1;push(h(s%MW,(s/MW)|0),s);let found=false;
+  for(let n=0;hk.length&&n<300000;n++){
+    const c=pop();if(c===g){found=true;break}const ci=c%MW,cj=(c/MW)|0,cg=AG[c];
+    for(let dj=-1;dj<=1;dj++)for(let di=-1;di<=1;di++){if(!di&&!dj)continue;const ni=ci+di,nj=cj+dj;if(ni<0||nj<0||ni>=MW||nj>=MW)continue;const k=nj*MW+ni;if(nav[k])continue;
+      if(di&&dj&&(nav[cj*MW+ni]||nav[nj*MW+ci]))continue;   // no cutting corners
+      const ng=cg+(di&&dj?Math.SQRT2:1);if(ASEEN[k]===id&&AG[k]<=ng)continue;ASEEN[k]=id;AG[k]=ng;APAR[k]=c;push(ng+h(ni,nj),k)}}
+  if(!found)return null;
+  const cellsRev=[];for(let k=g;k>=0;k=APAR[k])cellsRev.push([k%MW-MO+.5,((k/MW)|0)-MO+.5]);const pts=cellsRev.reverse();pts[0]=[ax,ay];pts[pts.length-1]=[bx,by];
+  const clear=(x0,y0,x1,y1)=>{const n=Math.ceil(Math.hypot(x1-x0,y1-y0)/.4);for(let i=1;i<=n;i++)if(navAt(x0+(x1-x0)*i/n,y0+(y1-y0)*i/n))return false;return true};
+  const out=[];let i=0;while(i<pts.length-1){let j=Math.min(pts.length-1,i+80);while(j>i+1&&!clear(pts[i][0],pts[i][1],pts[j][0],pts[j][1]))j--;out.push(pts[j]);i=j}
+  return out;
+}
+function followMe(){if(cam.follow!==me){cam.follow=me;hideCard()}if(cam.tz<5)cam.tz=6.5}
+function walkTo(wx,wy){
+  const g=nearestFree(wx,wy);if(!g){toast("Can't walk there.");return false}
+  const p=findPath(me.x,me.y,g[0],g[1]);if(!p){toast('No way through to there.');return false}
+  me.path=p;me.goal=g;me.stuck=0;followMe();return true}
+
+/* held movement keys (physical positions, so WASD works on any layout) */
+const MKEYS={KeyW:[0,-1],ArrowUp:[0,-1],KeyS:[0,1],ArrowDown:[0,1],KeyA:[-1,0],ArrowLeft:[-1,0],KeyD:[1,0],ArrowRight:[1,0]};
+const heldKeys=new Set();let sprint=false;
+addEventListener('keydown',e=>{if(e.target.tagName==='INPUT'||e.ctrlKey||e.metaKey||e.altKey)return;sprint=e.shiftKey;if(MKEYS[e.code]){heldKeys.add(e.code);e.preventDefault()}});
+addEventListener('keyup',e=>{sprint=e.shiftKey;heldKeys.delete(e.code)});
+addEventListener('blur',()=>{heldKeys.clear();sprint=false});
+$('btnMe').onclick=()=>{followMe()};
+addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&e.target.tagName!=='INPUT'&&!e.ctrlKey&&!e.metaKey&&!e.altKey)followMe()});
+
+function stepMove(dx,dy){   // slide along obstacles; returns metres actually moved
+  const x0=me.x,y0=me.y,n=Math.max(1,Math.ceil(Math.hypot(dx,dy)/.4)),sx=dx/n,sy=dy/n;
+  for(let i=0;i<n;i++){if(!navAt(me.x+sx,me.y+sy)){me.x+=sx;me.y+=sy}else if(sx&&!navAt(me.x+sx,me.y))me.x+=sx;else if(sy&&!navAt(me.x,me.y+sy))me.y+=sy;else break}
+  return Math.hypot(me.x-x0,me.y-y0)}
+function updAvatar(dt){
+  let vx=0,vy=0,want=0;
+  if(heldKeys.size){let sx=0,sy=0;for(const k of heldKeys){sx+=MKEYS[k][0];sy+=MKEYS[k][1]}
+    if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;if(cam.follow!==me)followMe()}}
+  else if(me.path){const wp=me.path[0],dx=wp[0]-me.x,dy=wp[1]-me.y,d=Math.hypot(dx,dy);
+    if(d<.35){me.path.shift();if(!me.path.length){me.path=null;me.goal=null}}else{vx=dx/d;vy=dy/d;want=Math.min(1,d/.8+.25)}}
+  const top=clamp(100/cam.zoom,3,12)*(sprint?1.7:1);
+  me.spd+=clamp(top*want-me.spd,-60*dt,45*dt);
+  if(me.spd>.05&&(vx||vy)){const moved=stepMove(vx*me.spd*dt,vy*me.spd*dt);
+    if(me.path){me.stuck=moved<me.spd*dt*.3?me.stuck+dt:0;if(me.stuck>.7){me.path=null;me.goal=null;me.spd=0}}
+    const fx=sdir(vx,vy);if(Math.abs(fx)>.05)me.fc=fx>0?1:-1}
+  else if(!want)me.spd=Math.max(0,me.spd-60*dt);
+  me.pose=me.spd>.2?'walk':'stand';if(me.pose==='walk')me.ph+=Math.min(me.spd*5.4,14)*dt;
+  const k=Math.min(1,dt*20);me.dx+=(me.x-me.dx)*k;me.dy+=(me.y-me.dy)*k;
+}
+
+/* drawing: the usual figure, plus a red pencil ring and a bobbing "you" arrow so it can be found at any zoom */
+function drawAvatar(c,lod){
+  const x=me.dx,y=me.dy,z=cam.zoom,r=Math.max(.8,8/z);
+  J=mulberry32(5+BOIL);c.beginPath();const ring=[];for(let i=0;i<9;i++){const a=i/9*TAU;ring.push([x+Math.cos(a)*r,y+Math.sin(a)*r])}spoly(c,ring,r*.1);pencil(c,'#b8432f',.8,1.5);c.stroke();c.globalAlpha=1;
+  drawPerson(c,me,x,y,Math.max(lod,1));
+}
+function drawAvatarMarker(c){   // drawn after everything else so bridges and buildings never hide it
+  c.save();c.translate(me.dx,me.dy);if(VIEW.th)c.rotate(-VIEW.th);
+  const H=me.look.h*1.12,s=Math.max(.34,7/cam.zoom),bob=Math.sin(simT*4)*s*.18,hx=VIEW.kx0*1.05*H,hy=-VIEW.kz0*1.05*H-.3-s*.4-bob;
+  const tri=[[hx-s*.75,hy-s*1.2],[hx+s*.75,hy-s*1.2],[hx,hy]];c.globalAlpha=1;c.fillStyle=wash('#b8432f',.8);fillPoly(c,tri);
+  J=mulberry32(9+BOIL);c.beginPath();spoly(c,tri,s*.08);pencil(c,'#7a2a1e',.9,1.2);c.stroke();c.globalAlpha=1;c.restore();
+}
+function drawGoalMark(c){   // pencil circle and cross where a tap sent you
+  if(!me.path)return;const gx=me.goal[0],gy=me.goal[1],r=Math.max(.7,7/S)*(1+.08*Math.sin(simT*6)),q=r*.45;
+  J=mulberry32(11+BOIL);c.beginPath();const ring=[];for(let i=0;i<8;i++){const a=i/8*TAU;ring.push([gx+Math.cos(a)*r,gy+Math.sin(a)*r])}spoly(c,ring,r*.1);sl(c,gx-q,gy-q,gx+q,gy+q,r*.1);sl(c,gx-q,gy+q,gx+q,gy-q,r*.1);
+  pencil(c,'#b8432f',.85,1.6);c.stroke();c.globalAlpha=1}
+
+/* ---------------- test hooks: the whole script lives in an IIFE, so tests reach in through this one handle ---------------- */
+window.__journey={me,cam,navAt,nearestFree,findPath,stepMove,toScreen,buildings,qCenter,peds,vehicles,fixedPeople};
 })();
 </script>

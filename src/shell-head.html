@@ -90,12 +90,12 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 }
 </style>
 
-<canvas id="scene" aria-label="Live pencil sketch of Shapla Chattar in Motijheel, Dhaka. Drag to pan, scroll to zoom, click a person or vehicle to follow them."></canvas>
+<canvas id="scene" aria-label="Live pencil sketch of Shapla Chattar in Motijheel, Dhaka. Walk with WASD or arrow keys, or tap the ground. Drag to pan, scroll to zoom, click a person or vehicle to follow them."></canvas>
 
 <header class="note title">
   <h1><span class="bn">শাপলা চত্বর</span><span class="en">Motijheel, Dhaka</span></h1>
   <p class="clock"><span class="bn" id="clockBn">সকাল ৮:৩০</span> · <span id="clockEn">8:30 AM</span> <span id="weatherTxt"></span></p>
-  <p class="hint">Drag to wander · scroll or pinch to zoom · click anyone to follow</p>
+  <p class="hint">WASD or tap to walk · drag to look around · scroll or pinch to zoom · click anyone to follow</p>
 </header>
 
 <button id="toolsToggle" aria-controls="tools" aria-expanded="false">Controls</button>
@@ -129,6 +129,10 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
   <div class="row">
     <button id="btnLang">Speech: বাংলা</button>
     <button id="btnFollow">Follow someone</button>
+  </div>
+  <div class="row">
+    <button id="btnMe">Find me (F)</button>
+    <span style="font-size:12px;align-self:center;text-align:center;color:var(--graphite-soft)">Shift to run</span>
   </div>
 </aside>
 
