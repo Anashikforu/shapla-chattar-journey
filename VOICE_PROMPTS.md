@@ -155,6 +155,13 @@ Generate every line below. The Bangla script is what the model should read. The 
 | `player_pass_1` | V_TEEN | পাস দে! পাস দে! | Pass de! Pass de! | Pass it! Pass it! | `[shouting]` Across the club ground, breathless. |
 | `player_goal_1` | V_TEEN | গোওওল! | Gooool! | Goooal! | `[shouting]` Long joyful cry. 2 takes. |
 
+### Asking for alms
+
+| ID | Voice | Bangla | Romanised | English | Delivery |
+|---|---|---|---|---|---|
+| `beggar_1` | V_PEON | আল্লাহর ওয়াস্তে কিছু দিন ভাই, দুই দিন কিছু খাই নাই। | Allahr waste kichu din bhai, dui din kichu khai nai. | For God's sake, give a little, bhai. I have not eaten for two days. | Soft, tired, not pleading loudly. Dignified. |
+| `beggar_2` | V_AUNTY | মা, একটু সাহায্য করেন, আল্লাহ আপনার ভালো করবে। | Ma, ektu sahajjo karen, Allah apnar bhalo korbe. | Mother, please help a little, God will reward you. | Gentle and quiet, an older woman. |
+
 ### Inside the hotel
 
 | ID | Voice | Bangla | Romanised | English | Delivery |
@@ -199,6 +206,7 @@ Generate every line below. The Bangla script is what the model should read. The 
 | `sfx_whistle` | Traffic police whistle: one long shrill pea-whistle blast then a short one, outdoors. |
 | `sfx_crow` | House crow (*Corvus splendens*) caw, two harsh calls, close. |
 | `sfx_train_horn` | Diesel locomotive two-tone horn at a big station, two long blasts, slight echo from a concrete roof. |
+| `sfx_bark` | A street dog barking two or three short woofs, medium-sized dog, outdoors, slight echo off buildings. |
 | `sfx_bus_slap` | Flat palm slapping the metal side of a bus twice (thap-thap), boomy sheet-metal thud. |
 
 ## 7. Ambience loops
@@ -215,7 +223,7 @@ Generate every line below. The Bangla script is what the model should read. The 
 ## 8. Checklist
 
 - [ ] 16 voices designed (section 4)
-- [ ] 59 lines generated, with 2–3 takes for hawker calls and helper shouts
+- [ ] 61 lines generated, with 2–3 takes for hawker calls and helper shouts
 - [ ] 9 SFX and 3 ambience loops (`amb_azan` optional, real recording only)
 - [ ] Files named exactly by ID, trimmed, levelled
 - [ ] Dropped into the scene with **Voices**, or listed in `voices/voices.js`

@@ -485,6 +485,31 @@ const mem = await page.evaluate(() => {
 console.log(`Building images: ${mem.held} of ${mem.n} held at start (cap ${mem.cap}), ${mem.nowMB.toFixed(0)} MB now vs ${mem.allMB.toFixed(0)} MB if all were built; eviction keeps ${mem.afterBurst} after building 300 with room for 100`);
 if (!(mem.held <= mem.cap && mem.held < mem.n * .7)) errors.push('building images should be built on demand under a cap: ' + JSON.stringify(mem));
 if (!(mem.afterBurst <= 100 && mem.firstGone && mem.lastKept)) errors.push('the oldest building image should be dropped first: ' + JSON.stringify(mem));
+// street life: dogs, cats and goats wander (and stay out of buildings); dogs bark; beggars sit with a bowl and can be given to
+const life = await page.evaluate(() => {
+  const { dogs, updAnimals, navAt, beggars, RESTOS, spatial, me } = window.__journey;
+  updAnimals(1 / 30); const kinds = {}; for (const d of dogs) kinds[d.kind] = (kinds[d.kind] || 0) + 1;
+  const start = dogs.map(d => [d.x, d.y]); for (let i = 0; i < 1800; i++) updAnimals(1 / 30);   // a minute of animal time
+  const bark = [spatial(me.x + 30, me.y, 'sfx_bark').g, spatial(me.x + 60, me.y, 'sfx_bark').g];
+  return { kinds, total: dogs.length, moved: dogs.filter((d, i) => Math.hypot(d.x - start[i][0], d.y - start[i][1]) > 1.5).length, inside: dogs.filter(d => navAt(d.x, d.y)).length, bark,
+    beggars: beggars.length, bowls: beggars.every(p => p.bowl && p.pose === 'sit'), blocked: beggars.filter(p => navAt(p.x, p.y)).length, atDoors: beggars.filter(p => RESTOS.some(R => Math.hypot(R.entry[0] - p.x, R.entry[1] - p.y) < 5)).length };
+});
+console.log(`Street life: ${JSON.stringify(life.kinds)}; ${life.moved}/${life.total} moved in a minute, ${life.inside} inside something solid; bark heard at 30 m ${life.bark[0].toFixed(2)}, 60 m ${life.bark[1].toFixed(2)}; ${life.beggars} beggars (bowls ${life.bowls}, in walls ${life.blocked}, in doorways ${life.atDoors})`);
+if (!(life.kinds.dog >= 15 && life.kinds.cat >= 5 && life.kinds.goat >= 2)) errors.push('expected dogs, cats and goats: ' + JSON.stringify(life.kinds));
+if (life.moved < life.total * .5) errors.push(`strays should wander, only ${life.moved} of ${life.total} moved`);
+if (life.inside > life.total * .1) errors.push(`${life.inside} animals ended up inside something solid`);
+if (!(life.bark[0] > 0 && life.bark[1] === 0)) errors.push('a bark should carry about 50 m: ' + JSON.stringify(life.bark));
+if (life.beggars < 8 || !life.bowls || life.blocked || life.atDoors) errors.push('beggars should sit with bowls, in the open, away from doorways: ' + JSON.stringify(life));
+const gift = await page.evaluate(async () => {
+  const { beggars, me, nearestFree, openTalk, STAT, ACT } = window.__journey, p = beggars[0], f = nearestFree(p.x + 1.2, p.y, 4);
+  me.x = me.dx = f[0]; me.y = me.dy = f[1]; me.spd = 0; STAT.wallet = 100; STAT.alms = 0; openTalk(p);
+  const opened = ACT.mode === 'talk', btn = [...document.querySelectorAll('#actBody .dish')].find(b => b.textContent.includes('৳10') && !b.textContent.includes('৳100'));
+  if (btn) btn.click();
+  const r = { opened, found: !!btn, wallet: STAT.wallet, alms: STAT.alms, still: ACT.mode === 'talk', said: document.getElementById('actSay').textContent };
+  document.getElementById('actClose').click(); return r;
+});
+console.log(`Giving: panel ${gift.opened ? 'opened' : 'DID NOT OPEN'}, wallet 100 -> ${gift.wallet}, alms ${gift.alms}, reply "${gift.said.slice(0, 40)}"`);
+if (!gift.opened || !gift.found || gift.wallet !== 90 || gift.alms !== 10 || !gift.said) errors.push('giving ৳10 to a beggar did not work: ' + JSON.stringify(gift));
 // phone-sized run in a fresh browser context (no saved state): layout, status bar and the hotel menu must fit a 390x780 screen
 const ctx2 = await browser.createBrowserContext(), phone = await ctx2.newPage();
 await steady(phone);

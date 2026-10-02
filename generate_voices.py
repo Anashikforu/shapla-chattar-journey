@@ -17,7 +17,7 @@ Features:
 - Supports single line generation (--line <id>), multiple takes (--takes <n>), and --dry-run.
 
 Usage:
-  # Dry run to inspect all 59 lines, styles, and character voices:
+  # Dry run to inspect all 61 lines, styles, and character voices:
   python3 generate_voices.py --dry-run
 
   # Generate all voices using prebuilt voices:
@@ -899,6 +899,30 @@ LINES = [
             "AUDIO PROFILE: Commuter stuck in car/CNG, 34. "
             "THE SCENE: Sitting in deadlocked traffic at the roundabout. "
             "DIRECTOR'S NOTES: Exasperated sigh turning into half-amused laughter, classic Dhaka patience."
+        ),
+    },
+    {
+        "id": "beggar_1",
+        "voice": "V_PEON",
+        "display_bn": "আল্লাহর ওয়াস্তে কিছু দিন ভাই, দুই দিন কিছু খাই নাই।",
+        "tts_text": "<sigh> আল্লাহর ওয়াস্তে কিছু দিন ভাই, দুই দিন কিছু খাই নাই।",
+        "en": "For God's sake, give a little, bhai. I have not eaten for two days.",
+        "style": (
+            "AUDIO PROFILE: Elderly man, 60, sitting on the pavement with a steel bowl. "
+            "THE SCENE: Calling softly to a passer-by near the mosque. "
+            "DIRECTOR'S NOTES: Soft, tired and dignified. Not pleading loudly."
+        ),
+    },
+    {
+        "id": "beggar_2",
+        "voice": "V_AUNTY",
+        "display_bn": "মা, একটু সাহায্য করেন, আল্লাহ আপনার ভালো করবে।",
+        "tts_text": "মা, একটু সাহায্য করেন, আল্লাহ আপনার ভালো করবে।",
+        "en": "Mother, please help a little, God will reward you.",
+        "style": (
+            "AUDIO PROFILE: Older woman, 55, seated at the foot of an overbridge. "
+            "THE SCENE: Asking quietly as people pass. "
+            "DIRECTOR'S NOTES: Gentle and quiet, with warmth."
         ),
     },
     {

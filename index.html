@@ -397,11 +397,13 @@ const VOICE_LINES=[
  ['guardian_1','Mother at school gate','এই রাফি! এইদিকে আসো, রোদে যাইও না! টিফিন পুরাটা খাইছো?','Hey Rafi! Come here, don\'t stand in the sun! Did you finish your whole tiffin?'],
  ['pupil_1','School pupil','আম্মু প্লিজ, একটা আইসক্রিম কিনে দাও না! অনেক গরম লাগতেছে!','Ammu please, buy me an ice cream! It\'s so hot!'],
  ['hotel_welcome_1','Hotel boy','আসেন ভাই, বসেন! গরম ভাত, কাচ্চি, কালা ভুনা আছে! কী খাবেন?','Come in, bhai, sit down! Hot rice, kacchi, kala bhuna! What will you have?'],
+ ['beggar_1','Man asking for alms','আল্লাহর ওয়াস্তে কিছু দিন ভাই, দুই দিন কিছু খাই নাই।','For God\'s sake, give a little, bhai. I have not eaten for two days.'],
+ ['beggar_2','Woman asking for alms','মা, একটু সাহায্য করেন, আল্লাহ আপনার ভালো করবে।','Mother, please help a little, God will reward you.'],
  ['bump_1','Man you bumped into','আরে ভাই, দেখে হাঁটেন! ধাক্কা দিলেন তো!','Hey bhai, watch where you walk! You bumped right into me!'],
  ['bump_2','Woman you bumped into','উফ! সামনে দেখে চলেন না ভাই, এত তাড়া কীসের!','Oof! Look ahead when you walk bhai, what\'s the big hurry!'],
  ['phone_1','Woman on phone','হ্যাঁ আম্মা, শুনতেছো? বেতন পাইছি আম্মা, বিকাশে টাকা পাঠায়া দিতাছি। শরীর ভালো তো তোমার?','Yes Amma, can you hear me? I got my salary Amma, sending money by bKash. Are you feeling alright?'],
 ];
-const SFX_LIST=[['sfx_rickshaw_bell','Rickshaw bell, tring-tring'],['sfx_horn_bus','Bus pressure horn'],['sfx_horn_car','Car horn'],['sfx_horn_cng','CNG auto-rickshaw horn'],['sfx_horn_bike','Motorbike horn'],
+const SFX_LIST=[['sfx_bark','Street dog barking, two or three short woofs'],['sfx_rickshaw_bell','Rickshaw bell, tring-tring'],['sfx_horn_bus','Bus pressure horn'],['sfx_horn_car','Car horn'],['sfx_horn_cng','CNG auto-rickshaw horn'],['sfx_horn_bike','Motorbike horn'],
  ['sfx_whistle','Traffic police whistle'],['sfx_crow','House crow caw'],['sfx_bus_slap','Helper slapping the bus side'],['sfx_train_horn','Train horn arriving at Kamalapur'],['amb_city','City ambience loop'],['amb_rain','Rain loop'],['amb_night','Night ambience loop'],['amb_azan','Distant azan (real recording)']];
 const LINE=Object.fromEntries(VOICE_LINES.map(l=>[l[0],{id:l[0],who:l[1],bn:l[2],en:l[3]}]));
 const ALL_IDS=[...VOICE_LINES.map(l=>l[0]),...SFX_LIST.map(s=>s[0])];
@@ -498,8 +500,8 @@ function audioInit(){
 }
 function startLoop(id){if(!A.ctx||A.loops[id]||!A.clips.has(id))return;const s=A.ctx.createBufferSource();s.buffer=A.clips.get(id)[0];s.loop=true;const g=A.ctx.createGain();g.gain.value=0;s.connect(g);g.connect(A.master);s.start();A.loops[id]=g}
 /* the listener is the avatar. How far a sound carries depends on what it is; pan follows the direction relative to the camera's facing. */
-const AUDIO_R={voice:40,horn:120,bell:45,whistle:80,crow:90,slap:35,train:260};
-const audioKind=id=>id.startsWith('sfx_horn')?'horn':id==='sfx_rickshaw_bell'?'bell':id==='sfx_whistle'?'whistle':id==='sfx_crow'?'crow':id==='sfx_bus_slap'?'slap':id==='sfx_train_horn'?'train':'voice';
+const AUDIO_R={voice:40,horn:120,bell:45,whistle:80,crow:90,slap:35,train:260,bark:50};
+const audioKind=id=>id.startsWith('sfx_horn')?'horn':id==='sfx_rickshaw_bell'?'bell':id==='sfx_whistle'?'whistle':id==='sfx_crow'?'crow':id==='sfx_bus_slap'?'slap':id==='sfx_bark'?'bark':id==='sfx_train_horn'?'train':'voice';
 const rolloff=(d,R)=>d<2?1:Math.pow(clamp(1-(d-2)/(R-2),0,1),1.6);
 /* metres of building between two points, walked in 2 m steps over the building-footprint raster */
 function occlusion(x0,y0,x1,y1){const d=Math.hypot(x1-x0,y1-y0);if(d<6)return 0;const n=Math.min(70,Math.ceil(d/2)),sx=(x1-x0)/n,sy=(y1-y0)/n;let hits=0;for(let i=1;i<n;i++){const k=mk(x0+sx*i,y0+sy*i);if(k>=0&&WALL[k])hits++}return hits*(d/n)}
@@ -524,6 +526,8 @@ const SYN={
   sfx_whistle(o,t){const w=A.ctx.createOscillator();w.frequency.value=2650;const l=A.ctx.createOscillator();l.frequency.value=32;const lg=A.ctx.createGain();lg.gain.value=140;l.connect(lg);lg.connect(w.frequency);const g=A.ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.16,t+.02);g.gain.setValueAtTime(.16,t+.45);g.gain.linearRampToValueAtTime(0,t+.5);g.gain.setValueAtTime(0,t+.62);g.gain.linearRampToValueAtTime(.16,t+.64);g.gain.linearRampToValueAtTime(0,t+.8);w.connect(g);g.connect(o);w.start(t);l.start(t);w.stop(t+.9);l.stop(t+.9)},
   sfx_crow(o,t){const f=A.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=1000;f.Q.value=3;f.connect(o);for(let i=0;i<2;i++){const s=A.ctx.createOscillator();s.type='sawtooth';s.frequency.setValueAtTime(640,t+i*.32);s.frequency.exponentialRampToValueAtTime(470,t+i*.32+.24);const g=A.ctx.createGain();env(g,t+i*.32,.02,.35,.24);s.connect(g);g.connect(f);s.start(t+i*.32);s.stop(t+i*.32+.3)}},
   sfx_train_horn(o,t){const f=A.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=1200;f.connect(o);for(const[fr,d]of[[233,0],[294,0],[233,1.3],[294,1.3]])osc('sawtooth',fr,t+d,1,f,.14,.08)},
+  sfx_bark(o,t){for(let i=0;i<(Math.random()<.5?2:3);i++){const t0=t+i*.26,b=A.ctx.createBufferSource();b.buffer=A.noise;const f=A.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=950;f.Q.value=1.1;const g=A.ctx.createGain();env(g,t0,.004,.32,.1);b.connect(f);f.connect(g);g.connect(o);b.start(t0);b.stop(t0+.16);
+    const s=A.ctx.createOscillator();s.type='sawtooth';s.frequency.setValueAtTime(540,t0);s.frequency.exponentialRampToValueAtTime(250,t0+.1);const g2=A.ctx.createGain();env(g2,t0,.004,.16,.1);s.connect(g2);g2.connect(o);s.start(t0);s.stop(t0+.16)}},
   sfx_bus_slap(o,t){for(let i=0;i<2;i++){const s=A.ctx.createBufferSource();s.buffer=A.noise;const f=A.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=500;const g=A.ctx.createGain();env(g,t+i*.18,.003,.5,.09);s.connect(f);f.connect(g);g.connect(o);s.start(t+i*.18,Math.random());s.stop(t+i*.18+.12)}},
 };
 function sfx(id,x,y,gm=1){if(!A.on)return;const sp=spatial(x,y,id);sp.g*=gm;if(sp.g<.02)return;if(A.clips.has(id)){playClip(id,sp,mr(.95,1.05));return}const f=SYN[id];if(f)f(outNode(sp.g,sp.pan,sp.lp),A.ctx.currentTime+.01)}
@@ -1504,10 +1508,29 @@ const pigeons=[],crows=[],dogs=[];
 function genAnimals(){
   for(let i=0;i<34;i++){const a=RND()*TAU,r=rr(11.3,15.4);pigeons.push({hx:Math.cos(a)*r,hy:Math.sin(a)*r,x:Math.cos(a)*r,y:Math.sin(a)*r,z:0,st:'ground',ph:RND()*TAU})}
   for(let i=0;i<40&&spans.length;i++){const s=rpick(spans);crows.push({span:s,t:rr(.15,.85),w:(RND()*s.n)|0,st:'sit',x:0,y:0,z:0,ph:RND()*TAU,cd:rr(5,40)})}
-  for(const t of trees.slice(0,8))dogs.push({x:t.x+rr(-2,2),y:t.y+rr(1,3),col:rpick(['#c9a36b','#8a6a4a','#e0d0b0','#5a4a3a']),ph:RND()*TAU});
+  const mk=(kind,x,y,cols)=>dogs.push({kind,x,y,col:rpick(cols),ph:RND()*TAU,fc:RND()<.5?1:-1,st:'rest',t:rr(1,12),fix:false,barkT:rr(5,30)});
+  const DOGC=['#c9a36b','#8a6a4a','#e0d0b0','#5a4a3a','#b8a58a'],CATC=['#d9a066','#4a4440','#e8e0d0','#8a8a86','#c9824a'],GOATC=['#e8e0d0','#8a6a4a','#3a3430','#c9b89a'];
+  for(const t of trees.slice(0,8))mk('dog',t.x+rr(-2,2),t.y+rr(1,3),DOGC);
+  const fp=walks.filter(w=>!w.closed&&w.side!==0&&w.len>40);   // more strays along the footpaths
+  for(let i=0;i<16&&fp.length;i++){const P=rpick(fp),o=[];walkPos(P,rr(8,P.len-8),-(P.sw/2)+.7,o);if(inWorld(o[0],o[1],-20)&&Math.hypot(o[0],o[1])>RSW+6)mk('dog',o[0],o[1],DOGC)}
+  const food=stalls.filter(s=>['tea','hotel','grill','singara','fuchka','jhalmuri'].includes(s.type));   // cats hang about where food is
+  for(let i=0;i<12&&food.length;i++){const s=rpick(food);mk('cat',s.x+s.nx*(s.d/2+1.1)+s.tx*rr(-1,1),s.y+s.ny*(s.d/2+1.1)+s.ty*rr(-1,1),CATC)}
+  for(const F of[sites.baitul,sites.kamalapur,sites.green,sites.mgbhs])if(F)for(let i=0;i<2;i++){const c=FW(F,rr(8,F.L-8),rr(8,F.D-8));mk('goat',c[0],c[1],GOATC)}   // a few goats on the open grounds
 }
+const PACE={dog:1.5,cat:1.1,goat:.55},ROAM={dog:11,cat:4,goat:7};
+/* strays rest, trot to a spot near home, sniff about, rest again; dogs bark at the avatar and at night */
+function updWander(dt){
+  for(const d of dogs){
+    if(!d.fix){const f=nearestFree(d.x,d.y,10);if(f){d.x=f[0];d.y=f[1]}d.home=[d.x,d.y];d.fix=true}
+    d.barkT-=dt;d.t-=dt;
+    if(d.st==='rest'){if(d.t<=0){const a=Math.random()*TAU,r=mr(2,ROAM[d.kind]),tx=d.home[0]+Math.cos(a)*r,ty=d.home[1]+Math.sin(a)*r;if(!navAt(tx,ty)&&cellAt(tx,ty)!==2){d.tx=tx;d.ty=ty;d.st='trot'}else d.t=mr(3,8)}}
+    else if(d.st==='trot'){const dx=d.tx-d.x,dy=d.ty-d.y,L=Math.hypot(dx,dy),s=Math.min(L,PACE[d.kind]*dt);
+      if(L<.2){d.st='sniff';d.t=mr(2,5)}else{const nx=d.x+dx/L*s,ny=d.y+dy/L*s;if(navAt(nx,ny)||cellAt(nx,ny)===2){d.st='rest';d.t=mr(4,12)}else{d.x=nx;d.y=ny;d.ph+=dt*9;const f=sdir(dx,dy);if(Math.abs(f)>.05)d.fc=f>0?1:-1}}}
+    else if(d.st==='sniff'){if(d.t<=0){d.st='rest';d.t=mr(6,25)}}
+    if(d.kind==='dog'&&d.barkT<=0){const near=Math.hypot(d.x-me.x,d.y-me.y)<6,night=lightsOn()>.5;if(near||(night&&Math.random()<.3)){sfx('sfx_bark',d.x,d.y);d.barkT=mr(near?18:25,60)}else d.barkT=mr(5,20)}}}
 let flockT=20;
 function updAnimals(dt){
+  updWander(dt);
   flockT-=dt;if(flockT<=0){flockT=mr(25,60);for(const p of pigeons){p.st='fly';p.fa=Math.atan2(p.y,p.x);p.fr=mr(10,24);p.fz=mr(9,17);p.land=mr(10,20)}}
   for(const p of pigeons){p.ph+=dt*(p.st==='fly'?18:3);
     if(p.st==='fly'){p.fa+=dt*.55;p.x=lerp(p.x,Math.cos(p.fa)*p.fr,dt*1.5);p.y=lerp(p.y,Math.sin(p.fa)*p.fr,dt*1.5);p.z=lerp(p.z,p.fz,dt*1.2);p.land-=dt;if(p.land<=0){p.st='landing';const a=Math.random()*TAU,r=mr(11.3,15.4);p.hx=Math.cos(a)*r;p.hy=Math.sin(a)*r}}
@@ -1536,7 +1559,7 @@ function step(dt){
   for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead){const v=vehicles[i];if(cam.follow===v){cam.follow=null;toast('They rode off the edge of the sketch.');hideCard()}vehicles.splice(i,1)}
   STEPN++;for(let i=0;i<peds.length;i++){const p=peds[i];if(Math.abs(p.x-cam.x)>260||Math.abs(p.y-cam.y)>200){if((i+STEPN)%3===0)updPed(p,dt*3)}else updPed(p,dt)}
   for(let i=peds.length-1;i>=0;i--)if(peds[i].dead)peds.splice(i,1);
-  updFixed(dt);updAvatar(dt);updPlayers(dt);updCrowds(dt);updTrain(dt);updBridges(dt);updSnatch(dt);updMetro(dt);updAnimals(dt);
+  updFixed(dt);updAvatar(dt);updPlayers(dt);updCrowds(dt);updTrain(dt);updBridges(dt);updSnatch(dt);updMetro(dt);updAnimals(dt);updBeggars(dt);
   for(let i=bubbles.length-1;i>=0;i--){const b=bubbles[i];if(simT-b.t0>b.dur||(b.owner&&b.owner.dead))bubbles.splice(i,1)}
   const k=Math.min(1,dt*8);for(const v of vehicles){v.dx+=(v.x-v.dx)*k;v.dy+=(v.y-v.dy)*k}for(const p of peds){p.dx+=(p.x-p.dx)*k;p.dy+=(p.y-p.dy)*k}
   audioTick(dt);
@@ -1651,6 +1674,7 @@ function drawPerson0(c,p,x,y,lod,extra){
   if(p.roam==='water'){const a=q(hL[0],hL[1]);c.fillStyle='rgba(120,170,210,.8)';c.fillRect(a[0]-.1,a[1]-.05,.2,.25)}
   if(p.roam==='paper'){const a=q(hR[0],hR[1]);c.fillStyle='#e9e4d6';c.fillRect(a[0]-.15,a[1]-.25,.3,.3)}
   if(act==='load'){c.fillStyle=p.loadCol||(p.loadCol=mpick(['#d8c9a0','#c9a36b','#8a6a4a','#b0b6bf']));c.beginPath();c.ellipse(hc[0],hc[1]-hr*1.9,.42,.2,0,0,TAU);c.fill();c.strokeStyle=INK;c.globalAlpha=.6;LW(.8/S);c.stroke();c.globalAlpha=1}
+  if(p.bowl){const a=q(.45,.02);c.fillStyle='#9a9a92';c.beginPath();c.ellipse(a[0],a[1],.13,.05,0,0,TAU);c.fill();c.strokeStyle=INK;c.globalAlpha=.6;LW(.7/S);c.stroke();c.globalAlpha=1}
   if(act==='stick'){const a=q(hR[0],hR[1]),b=q(hR[0]+.1,hR[1]+.55);c.strokeStyle='#8a5a2a';LW(.05);c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.stroke()}
 }
 
@@ -1921,8 +1945,15 @@ function drawPigeons(c){c.globalAlpha=1;for(const p of pigeons){const X=p.x+KX*p
   else{const f=Math.sin(p.ph)*.25;c.beginPath();c.moveTo(X-.35,Y-f);c.lineTo(X,Y);c.lineTo(X+.35,Y-f);pencil(c,'#5a6070',.9,1.1);c.stroke()}}}
 function drawCrows(c){c.globalAlpha=1;for(const k of crows){const X=k.x+KX*k.z,Y=k.y-KZ*k.z;if(!onScreen(k.x,k.y))continue;if(k.st==='sit'){c.fillStyle='#1c1c1c';c.beginPath();c.ellipse(X,Y-.18,.14,.2,.3,0,TAU);c.fill();c.beginPath();circ(c,X+.08,Y-.38,.08);c.fill()}
   else{const f=Math.sin(k.ph)*.3;c.beginPath();c.moveTo(X-.45,Y-f);c.lineTo(X,Y);c.lineTo(X+.45,Y-f);pencil(c,'#1c1c1c',.95,1.4);c.stroke()}}}
-function drawDog(c,d,lod){const x=d.x,y=d.y;c.globalAlpha=1;c.fillStyle=wash(d.col,.9);c.beginPath();c.ellipse(x,y-.18,.5,.24,0,0,TAU);c.fill();c.beginPath();circ(c,x+.42,y-.22,.16);c.fill();
-  if(lod>1){pencil(c,INK,.6,.8);c.beginPath();c.ellipse(x,y-.18,.5,.24,0,0,TAU);c.moveTo(x-.5,y-.15);c.quadraticCurveTo(x-.7,y-.1,x-.55,y);c.stroke()}}
+function drawDog(c,d,lod){
+  const x=d.x,y=d.y,f=d.fc||1,k=d.kind||'dog',trot=d.st==='trot',sw=trot?Math.sin(d.ph)*.12:0;c.globalAlpha=1;c.fillStyle=wash(d.col,.9);
+  if(k==='cat'){c.beginPath();c.ellipse(x,y-.12,.26,.13,0,0,TAU);c.fill();c.beginPath();circ(c,x+.24*f,y-.2,.1);c.fill();c.beginPath();c.moveTo(x+.19*f,y-.28);c.lineTo(x+.22*f,y-.38);c.lineTo(x+.27*f,y-.29);c.moveTo(x+.27*f,y-.29);c.lineTo(x+.32*f,y-.37);c.lineTo(x+.31*f,y-.25);c.fill();
+    if(lod>1){pencil(c,INK,.6,.8);c.beginPath();c.ellipse(x,y-.12,.26,.13,0,0,TAU);c.moveTo(x-.26*f,y-.1);c.quadraticCurveTo(x-.5*f,y-.25-sw,x-.42*f,y-.42);if(trot){c.moveTo(x-.1,y-.02);c.lineTo(x-.1+sw,y);c.moveTo(x+.12,y-.02);c.lineTo(x+.12-sw,y)}c.stroke()}return}
+  if(k==='goat'){c.beginPath();c.ellipse(x,y-.42,.45,.22,0,0,TAU);c.fill();c.beginPath();c.ellipse(x+.46*f,y-.58,.14,.1,.3*f,0,TAU);c.fill();c.fillStyle=wash('#6b5a45',.9);c.beginPath();c.moveTo(x+.5*f,y-.66);c.lineTo(x+.46*f,y-.82);c.lineTo(x+.55*f,y-.68);c.fill();
+    pencil(c,INK,.7,.9);c.beginPath();for(const l of[-.3,-.12,.14,.32]){c.moveTo(x+l,y-.25);c.lineTo(x+l+(l>0?sw:-sw),y)}c.moveTo(x+.58*f,y-.5);c.lineTo(x+.6*f,y-.4);if(lod>1){c.ellipse(x,y-.42,.45,.22,0,0,TAU)}c.stroke();return}
+  c.beginPath();c.ellipse(x,y-.18,.5,.24,0,0,TAU);c.fill();c.beginPath();circ(c,x+.42*f,y-.22,.16);c.fill();
+  if(trot||lod>1){pencil(c,INK,.6,.8);c.beginPath();if(lod>1){c.ellipse(x,y-.18,.5,.24,0,0,TAU);c.moveTo(x-.5*f,y-.15);c.quadraticCurveTo(x-.7*f,y-.1+(trot?sw:0),x-.55*f,y)}
+    if(trot){c.moveTo(x-.3,y-.05);c.lineTo(x-.3+sw*2,y);c.moveTo(x+.3,y-.05);c.lineTo(x+.3-sw*2,y)}c.stroke()}}
 
 /* ---------------- shadows ---------------- */
 function sunVec(){if(HOUR<6.2||HOUR>17.8)return null;const a=(HOUR-6)/12*Math.PI,s=Math.sin(a),L=clamp(.35+.9*(1-s),.35,2.2);return{x:-Math.cos(a)*L,y:-.32*L,k:clamp(s*1.6,0,1)}}
@@ -2045,6 +2076,7 @@ mini.addEventListener('pointerdown',e=>{const r=mini.getBoundingClientRect(),k=(
 const card=document.getElementById('card');const $=id=>document.getElementById(id);
 function hideCard(){card.hidden=true}
 function statusOf(o){
+  if(o.beggar)return'Sitting with a bowl, asking passers-by for a little help.';
   if(o.T){const v=o;if(v.parked)return v.sleepy?'Napping on the seat until the afternoon rush.':'Waiting at the rickshaw stand for a fare.';if(v.dwell>0)return'Stopped in the road, taking passengers.';
     const r=v.r;if(r.stopS!==undefined&&v.s<r.stopS&&!green(r.arm)&&r.stopS-v.s<60)return'Held at Shapla Chattar by the traffic sergeant.';if(v.spd<.4)return'Stuck in the jam, squeezing sideways for a gap.';return`Moving at ${Math.round(v.spd*3.6)} km/h.`}
   if(o.role==='police')return o.kind==='constable'?'Standing in the road with a stick, waving rickshaws aside.':o.act==='wave'?'Waving his road through.':'Holding his road with a raised palm.';
@@ -2082,7 +2114,7 @@ function boot(){
   for(let k=0;k<260;k++){spawnVehicles(.2);grid.clear();for(const v of vehicles)gridAdd(v);for(const o of staticObs)gridAdd(o);for(const v of vehicles)updVehicle(v,.2);for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead)vehicles.splice(i,1);phaseT+=.2;if(phaseT>=PHASE_LEN){phaseT=0;phase=1-phase}}
   for(const v of vehicles){v.dx=v.x;v.dy=v.y}bubbles.length=0;events.length=0;
   primeSprites();
-  initAvatar();initRestaurantEntry();
+  initAvatar();initRestaurantEntry();genBeggars();
   simT=0;updateVoiceUI();loadBundled();
   $('loading').classList.add('done');setTimeout(()=>$('loading').remove(),700);
   let last=performance.now(),acc=0,uiT=0,miniT=0;
@@ -2151,7 +2183,7 @@ const GOAL_CHAIN_V1_NEW=['fountain','eat','bank','baitul','kamalapur','skyline']
 function migrate(d){
   if(d.v===1){const st=d.stat;if(st&&Number.isInteger(st.g)){const chain=typeof st.a==='undefined'?GOAL_CHAIN_V1_OLD:GOAL_CHAIN_V1_NEW;st.gid=chain[st.g]||'done'}d.v=2}
   return d.v===SAVE_VERSION?d:null}   // a save from a newer version is ignored rather than guessed at
-function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:SAVE_VERSION,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me,stat:{w:Math.round(STAT.wallet),e:+STAT.energy.toFixed(1),g:STAT.goal,gid:(GOALS[STAT.goal]||{}).id||'done',a:STAT.ate,f:STAT.fine,o:STAT.outfit||null,sa:!!STAT.sandals,gm:!!STAT.gamchha}}))}catch(e){}}
+function saveState(){try{localStorage.setItem(SAVE_KEY,JSON.stringify({v:SAVE_VERSION,hour:HOUR,cam:{x:cam.tx,y:cam.ty,z:cam.tz},dir:VIEW.dir,ang:angIdx,bmode:BMODE,lang:LANG,speed:sIdx,rain:RAIN_MODE,weekend:FRIDAY,sound:soundPref,me:{x:+me.x.toFixed(2),y:+me.y.toFixed(2)},follow:cam.follow===me,stat:{w:Math.round(STAT.wallet),e:+STAT.energy.toFixed(1),g:STAT.goal,gid:(GOALS[STAT.goal]||{}).id||'done',a:STAT.ate,f:STAT.fine,o:STAT.outfit||null,sa:!!STAT.sandals,gm:!!STAT.gamchha,al:STAT.alms||0}}))}catch(e){}}
 function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')}catch(e){}d=d&&typeof d.v==='number'?migrate(d):null;if(!d)return false;
   if(typeof d.hour==='number')HOUR=d.hour%24;
   if(d.cam){cam.x=cam.tx=d.cam.x;cam.y=cam.ty=d.cam.y;cam.zoom=cam.tz=clamp(d.cam.z,ZMIN,ZMAX)}
@@ -2162,7 +2194,7 @@ function loadState(){let d=null;try{d=JSON.parse(localStorage.getItem(SAVE_KEY)|
   for(let i=0;i<3&&BMODE!==d.bmode;i++)cycleB();
   if(d.sound===false&&soundPref){soundPref=false;syncSoundUI()}
   if(d.me&&typeof d.me.x==='number'&&typeof d.me.y==='number'&&!navAt(d.me.x,d.me.y)){me.x=me.dx=d.me.x;me.y=me.dy=d.me.y}
-  if(d.stat){if(typeof d.stat.w==='number')STAT.wallet=Math.max(0,d.stat.w);if(typeof d.stat.e==='number')STAT.energy=clamp(d.stat.e,0,100);STAT.ate=!!d.stat.a;STAT.fine=!!d.stat.f;STAT.outfit=d.stat.o||null;STAT.sandals=!!d.stat.sa;STAT.gamchha=!!d.stat.gm;restoreOutfit();if(typeof d.stat.gid==='string'){const i=GOALS.findIndex(g=>g.id===d.stat.gid);STAT.goal=i>=0?i:d.stat.gid==='done'?GOALS.length:0}}
+  if(d.stat){if(typeof d.stat.w==='number')STAT.wallet=Math.max(0,d.stat.w);if(typeof d.stat.e==='number')STAT.energy=clamp(d.stat.e,0,100);STAT.ate=!!d.stat.a;STAT.fine=!!d.stat.f;STAT.outfit=d.stat.o||null;STAT.sandals=!!d.stat.sa;STAT.gamchha=!!d.stat.gm;STAT.alms=d.stat.al||0;restoreOutfit();if(typeof d.stat.gid==='string'){const i=GOALS.findIndex(g=>g.id===d.stat.gid);STAT.goal=i>=0?i:d.stat.gid==='done'?GOALS.length:0}}
   if(d.follow===false)cam.follow=null;else{cam.x=cam.tx=me.x+KX;cam.y=cam.ty=me.y-KZ}
   const dir=(d.dir|0)%4,ang=(d.ang|0)%ANGLES.length;
   if(dir!==VIEW.dir||ang!==angIdx){VIEW.dir=dir;VIEW.th=dir*Math.PI/2;angIdx=ang;const a=ANGLES[ang];VIEW.mode=a[0];VIEW.kx0=a[2];VIEW.kz0=a[3];$('btnAngle').textContent='Angle: '+a[1];applyView('Restoring your view…')}
@@ -2291,7 +2323,7 @@ function openTalk(p){
   if(Math.hypot(pedX(p)-me.x,pedY(p)-me.y)>3.2){toast(L2('আরেকটু কাছে যান।','Walk a little closer to talk.'));return}
   closeAct();ACT.mode='talk';ACT.p=p;me.path=null;me.goal=null;p.talkUntil=simT+60;p.fc=sdir(me.x-pedX(p),me.y-pedY(p))>0?1:-1;
   const first=!ACT.talked.has(p.id);ACT.talked.add(p.id);
-  const greet=p.stall?(p.stall.def.lines&&p.stall.def.lines.length?LINE[p.stall.def.lines[0]][LANG==='en'?'en':'bn']:L2('আসুন ভাই!','Come, bhai!')):L2('জি, বলুন?','Yes, tell me?');
+  const greet=p.beggar?L2(p.thought,p.thoughtEn):p.stall?(p.stall.def.lines&&p.stall.def.lines.length?LINE[p.stall.def.lines[0]][LANG==='en'?'en':'bn']:L2('আসুন ভাই!','Come, bhai!')):L2('জি, বলুন?','Yes, tell me?');
   talkView(greet,first)}
 function talkView(reply,tip){
   const p=ACT.p;if(!p)return;p.talkUntil=simT+60;
@@ -2304,6 +2336,7 @@ function talkView(reply,tip){
   ];
   if(p.stall&&isShop(p.stall))opts.push(actBtn(L2('কী কী আছে?','What do you have?'),'',()=>{const st=p.stall;closeAct();openStall(st)}));
   opts.push(actBtn(L2('ধন্যবাদ, আসি','Thanks, goodbye'),'',closeAct));
+  if(p.beggar){actView(pName(p),role,reply,beggarOptions(p));return}
   const tipLine=tip?TIPS[(Math.random()*TIPS.length)|0]:null;
   actView(pName(p),role,tipLine?`${reply}  ${L2('— '+tipLine[0],'— '+tipLine[1])}`:reply,opts)}
 
@@ -2485,6 +2518,43 @@ function drawGoalMark(c){   // pencil circle and cross where a tap sent you
   if(!me.path)return;const gx=me.goal[0],gy=me.goal[1],r=Math.max(.7,7/S)*(1+.08*Math.sin(simT*6)),q=r*.45;
   J=mulberry32(11+BOIL);c.beginPath();const ring=[];for(let i=0;i<8;i++){const a=i/8*TAU;ring.push([gx+Math.cos(a)*r,gy+Math.sin(a)*r])}spoly(c,ring,r*.1);sl(c,gx-q,gy-q,gx+q,gy+q,r*.1);sl(c,gx-q,gy+q,gx+q,gy-q,r*.1);
   pencil(c,'#b8432f',.85,1.6);c.stroke();c.globalAlpha=1}
+
+/* ---------------- beggars: people sitting with a bowl at the mosque, the station, the bridges and the busy footpaths ---------------- */
+const BEGGAR_THOUGHTS=[
+ ['কুড়িগ্রাম থেকে এসেছি, বন্যায় জমি ভেসে গেছে।','I came from Kurigram. The flood took our land.'],
+ ['দুই দিন ভালো করে খাওয়া হয়নি, বেশি কিছু চাই না।','Two days without a proper meal. I do not ask for much.'],
+ ['আমার ছেলে স্টেশনের কাছে বাদাম বেচে, আমি এখানে বসি।','My son sells peanuts near the station. I sit here.'],
+ ['কারখানার কাজটা চলে গেছে। এখন যা পাই তাই।','I lost my job at the factory. Now it is whatever comes.'],
+ ['ওষুধের টাকা জোগাড় করছি, পা ভালো না।','I am collecting for medicine. My leg is bad.']];
+const GIVE_THANKS=[['আল্লাহ আপনার ভালো করুক।','May God be good to you.'],['দোয়া করি বাবা, অনেক বড় হন।','My blessings on you, child.'],['জাযাকাল্লাহ, ভাই।','Thank you, brother.']];
+function genBeggars(){
+  const spots=[],add=(x,y)=>{if(x!=null)spots.push([x,y])};
+  const B=sites.baitul,K=sites.kamalapur;   // the mosque forecourt and the station front
+  if(B)for(const[a,b]of[[12,6],[B.L-12,6],[B.L/2+4,B.D-6]])add(...FW(B,a,b));
+  if(K)for(const[a,b]of[[15,8],[50,6],[85,8]])add(...FW(K,a,b));
+  for(const br of bridges.slice(0,4))add(br.x+br.lx*(br.half+1.3),br.y+br.ly*(br.half+1.3));   // at the foot of overbridge stairs
+  const fp=walks.filter(w=>!w.closed&&w.side!==0&&w.len>60);
+  for(let i=0;i<6&&fp.length;i++){const P=rpick(fp),o=[];walkPos(P,rr(10,P.len-10),-(P.sw/2)+.6,o);if(inWorld(o[0],o[1],-20))add(o[0],o[1])}
+  const placed=[];
+  for(const[x,y]of spots){const f=nearestFree(x,y,5);if(!f||cellAt(f[0],f[1])===2)continue;
+    if(placed.some(q=>Math.hypot(q[0]-f[0],q[1]-f[1])<8)||RESTOS.some(R=>Math.hypot(R.entry[0]-f[0],R.entry[1]-f[1])<5))continue;   // not on top of each other, never in a doorway
+    placed.push(f);const fem=Math.random()<.45,p=makePerson('beggar',fem),L=p.look;
+    Object.assign(L,{skin:mpick(['#6b4028','#7a4a30','#8d5a3b']),hair:'#9a958c',h:L.h*.94,bag:false,tie:false,cap:false,gamchha:false,beard:!fem&&Math.random()<.6});
+    if(fem){L.dress='sari';L.c1=mpick(['#8a7a68','#7a6a5a','#9a8a78']);L.c2=L.c1;L.headCover=true}else{L.dress='lungi';L.c1=mpick(['#bfae8a','#a89a7a','#b5a68c']);L.c2=mpick(['#6b6b5a','#5a5a4a']);L.cap=Math.random()<.4}
+    const th=mpick(BEGGAR_THOUGHTS);
+    Object.assign(p,{fixed:true,beggar:true,bowl:true,pose:'sit',act:null,fc:Math.random()<.5?1:-1,x:f[0],y:f[1],dx:f[0],dy:f[1],age:40+(Math.random()*30|0),thought:th[0],thoughtEn:th[1],roleText:fem?'Woman asking for alms':'Man asking for alms',callT:mr(5,20)});
+    fixedPeople.push(p);beggars.push(p)}
+}
+const beggars=[];
+/* they call out softly when you pass close; never loud, never following */
+function updBeggars(dt){
+  for(const p of beggars){p.callT-=dt;if(p.callT>0)continue;p.callT=mr(25,50);
+    if(Math.hypot(p.x-me.x,p.y-me.y)<9)say(pedAnchor(p),p.look.female?'beggar_2':'beggar_1',3.2,p)}}
+/* giving: the talk panel for a beggar offers 5, 10 or 20 taka */
+function beggarOptions(p){
+  const give=n=>actBtn(L2(`${n} টাকা দিন`,`Give ৳${n}`),`৳${n}`,()=>{addMoney(-n);STAT.alms=(STAT.alms||0)+n;updateStatusUI();const t=GIVE_THANKS[(Math.random()*GIVE_THANKS.length)|0];
+      toast(L2(`${n} টাকা দিলেন`,`You gave ৳${n}`));talkView(L2(t[0],t[1]),n>=20)},STAT.wallet<n,L2('টাকা কম','Not enough taka'));
+  return[give(5),give(10),give(20),actBtn(L2('দুঃখিত, আজ না','Sorry, not today'),'',closeAct)]}
 
 /* ---------------- restaurants you can walk into: street eateries, good restaurants, fine dining ---------------- */
 let INSIDE=false;

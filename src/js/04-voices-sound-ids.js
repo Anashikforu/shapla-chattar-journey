@@ -56,11 +56,13 @@ const VOICE_LINES=[
  ['guardian_1','Mother at school gate','এই রাফি! এইদিকে আসো, রোদে যাইও না! টিফিন পুরাটা খাইছো?','Hey Rafi! Come here, don\'t stand in the sun! Did you finish your whole tiffin?'],
  ['pupil_1','School pupil','আম্মু প্লিজ, একটা আইসক্রিম কিনে দাও না! অনেক গরম লাগতেছে!','Ammu please, buy me an ice cream! It\'s so hot!'],
  ['hotel_welcome_1','Hotel boy','আসেন ভাই, বসেন! গরম ভাত, কাচ্চি, কালা ভুনা আছে! কী খাবেন?','Come in, bhai, sit down! Hot rice, kacchi, kala bhuna! What will you have?'],
+ ['beggar_1','Man asking for alms','আল্লাহর ওয়াস্তে কিছু দিন ভাই, দুই দিন কিছু খাই নাই।','For God\'s sake, give a little, bhai. I have not eaten for two days.'],
+ ['beggar_2','Woman asking for alms','মা, একটু সাহায্য করেন, আল্লাহ আপনার ভালো করবে।','Mother, please help a little, God will reward you.'],
  ['bump_1','Man you bumped into','আরে ভাই, দেখে হাঁটেন! ধাক্কা দিলেন তো!','Hey bhai, watch where you walk! You bumped right into me!'],
  ['bump_2','Woman you bumped into','উফ! সামনে দেখে চলেন না ভাই, এত তাড়া কীসের!','Oof! Look ahead when you walk bhai, what\'s the big hurry!'],
  ['phone_1','Woman on phone','হ্যাঁ আম্মা, শুনতেছো? বেতন পাইছি আম্মা, বিকাশে টাকা পাঠায়া দিতাছি। শরীর ভালো তো তোমার?','Yes Amma, can you hear me? I got my salary Amma, sending money by bKash. Are you feeling alright?'],
 ];
-const SFX_LIST=[['sfx_rickshaw_bell','Rickshaw bell, tring-tring'],['sfx_horn_bus','Bus pressure horn'],['sfx_horn_car','Car horn'],['sfx_horn_cng','CNG auto-rickshaw horn'],['sfx_horn_bike','Motorbike horn'],
+const SFX_LIST=[['sfx_bark','Street dog barking, two or three short woofs'],['sfx_rickshaw_bell','Rickshaw bell, tring-tring'],['sfx_horn_bus','Bus pressure horn'],['sfx_horn_car','Car horn'],['sfx_horn_cng','CNG auto-rickshaw horn'],['sfx_horn_bike','Motorbike horn'],
  ['sfx_whistle','Traffic police whistle'],['sfx_crow','House crow caw'],['sfx_bus_slap','Helper slapping the bus side'],['sfx_train_horn','Train horn arriving at Kamalapur'],['amb_city','City ambience loop'],['amb_rain','Rain loop'],['amb_night','Night ambience loop'],['amb_azan','Distant azan (real recording)']];
 const LINE=Object.fromEntries(VOICE_LINES.map(l=>[l[0],{id:l[0],who:l[1],bn:l[2],en:l[3]}]));
 const ALL_IDS=[...VOICE_LINES.map(l=>l[0]),...SFX_LIST.map(s=>s[0])];

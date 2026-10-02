@@ -13,8 +13,8 @@ function audioInit(){
 }
 function startLoop(id){if(!A.ctx||A.loops[id]||!A.clips.has(id))return;const s=A.ctx.createBufferSource();s.buffer=A.clips.get(id)[0];s.loop=true;const g=A.ctx.createGain();g.gain.value=0;s.connect(g);g.connect(A.master);s.start();A.loops[id]=g}
 /* the listener is the avatar. How far a sound carries depends on what it is; pan follows the direction relative to the camera's facing. */
-const AUDIO_R={voice:40,horn:120,bell:45,whistle:80,crow:90,slap:35,train:260};
-const audioKind=id=>id.startsWith('sfx_horn')?'horn':id==='sfx_rickshaw_bell'?'bell':id==='sfx_whistle'?'whistle':id==='sfx_crow'?'crow':id==='sfx_bus_slap'?'slap':id==='sfx_train_horn'?'train':'voice';
+const AUDIO_R={voice:40,horn:120,bell:45,whistle:80,crow:90,slap:35,train:260,bark:50};
+const audioKind=id=>id.startsWith('sfx_horn')?'horn':id==='sfx_rickshaw_bell'?'bell':id==='sfx_whistle'?'whistle':id==='sfx_crow'?'crow':id==='sfx_bus_slap'?'slap':id==='sfx_bark'?'bark':id==='sfx_train_horn'?'train':'voice';
 const rolloff=(d,R)=>d<2?1:Math.pow(clamp(1-(d-2)/(R-2),0,1),1.6);
 /* metres of building between two points, walked in 2 m steps over the building-footprint raster */
 function occlusion(x0,y0,x1,y1){const d=Math.hypot(x1-x0,y1-y0);if(d<6)return 0;const n=Math.min(70,Math.ceil(d/2)),sx=(x1-x0)/n,sy=(y1-y0)/n;let hits=0;for(let i=1;i<n;i++){const k=mk(x0+sx*i,y0+sy*i);if(k>=0&&WALL[k])hits++}return hits*(d/n)}
@@ -39,6 +39,8 @@ const SYN={
   sfx_whistle(o,t){const w=A.ctx.createOscillator();w.frequency.value=2650;const l=A.ctx.createOscillator();l.frequency.value=32;const lg=A.ctx.createGain();lg.gain.value=140;l.connect(lg);lg.connect(w.frequency);const g=A.ctx.createGain();g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.16,t+.02);g.gain.setValueAtTime(.16,t+.45);g.gain.linearRampToValueAtTime(0,t+.5);g.gain.setValueAtTime(0,t+.62);g.gain.linearRampToValueAtTime(.16,t+.64);g.gain.linearRampToValueAtTime(0,t+.8);w.connect(g);g.connect(o);w.start(t);l.start(t);w.stop(t+.9);l.stop(t+.9)},
   sfx_crow(o,t){const f=A.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=1000;f.Q.value=3;f.connect(o);for(let i=0;i<2;i++){const s=A.ctx.createOscillator();s.type='sawtooth';s.frequency.setValueAtTime(640,t+i*.32);s.frequency.exponentialRampToValueAtTime(470,t+i*.32+.24);const g=A.ctx.createGain();env(g,t+i*.32,.02,.35,.24);s.connect(g);g.connect(f);s.start(t+i*.32);s.stop(t+i*.32+.3)}},
   sfx_train_horn(o,t){const f=A.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=1200;f.connect(o);for(const[fr,d]of[[233,0],[294,0],[233,1.3],[294,1.3]])osc('sawtooth',fr,t+d,1,f,.14,.08)},
+  sfx_bark(o,t){for(let i=0;i<(Math.random()<.5?2:3);i++){const t0=t+i*.26,b=A.ctx.createBufferSource();b.buffer=A.noise;const f=A.ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=950;f.Q.value=1.1;const g=A.ctx.createGain();env(g,t0,.004,.32,.1);b.connect(f);f.connect(g);g.connect(o);b.start(t0);b.stop(t0+.16);
+    const s=A.ctx.createOscillator();s.type='sawtooth';s.frequency.setValueAtTime(540,t0);s.frequency.exponentialRampToValueAtTime(250,t0+.1);const g2=A.ctx.createGain();env(g2,t0,.004,.16,.1);s.connect(g2);g2.connect(o);s.start(t0);s.stop(t0+.16)}},
   sfx_bus_slap(o,t){for(let i=0;i<2;i++){const s=A.ctx.createBufferSource();s.buffer=A.noise;const f=A.ctx.createBiquadFilter();f.type='lowpass';f.frequency.value=500;const g=A.ctx.createGain();env(g,t+i*.18,.003,.5,.09);s.connect(f);f.connect(g);g.connect(o);s.start(t+i*.18,Math.random());s.stop(t+i*.18+.12)}},
 };
 function sfx(id,x,y,gm=1){if(!A.on)return;const sp=spatial(x,y,id);sp.g*=gm;if(sp.g<.02)return;if(A.clips.has(id)){playClip(id,sp,mr(.95,1.05));return}const f=SYN[id];if(f)f(outNode(sp.g,sp.pan,sp.lp),A.ctx.currentTime+.01)}

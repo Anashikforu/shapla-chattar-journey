@@ -121,7 +121,7 @@ function openTalk(p){
   if(Math.hypot(pedX(p)-me.x,pedY(p)-me.y)>3.2){toast(L2('আরেকটু কাছে যান।','Walk a little closer to talk.'));return}
   closeAct();ACT.mode='talk';ACT.p=p;me.path=null;me.goal=null;p.talkUntil=simT+60;p.fc=sdir(me.x-pedX(p),me.y-pedY(p))>0?1:-1;
   const first=!ACT.talked.has(p.id);ACT.talked.add(p.id);
-  const greet=p.stall?(p.stall.def.lines&&p.stall.def.lines.length?LINE[p.stall.def.lines[0]][LANG==='en'?'en':'bn']:L2('আসুন ভাই!','Come, bhai!')):L2('জি, বলুন?','Yes, tell me?');
+  const greet=p.beggar?L2(p.thought,p.thoughtEn):p.stall?(p.stall.def.lines&&p.stall.def.lines.length?LINE[p.stall.def.lines[0]][LANG==='en'?'en':'bn']:L2('আসুন ভাই!','Come, bhai!')):L2('জি, বলুন?','Yes, tell me?');
   talkView(greet,first)}
 function talkView(reply,tip){
   const p=ACT.p;if(!p)return;p.talkUntil=simT+60;
@@ -134,6 +134,7 @@ function talkView(reply,tip){
   ];
   if(p.stall&&isShop(p.stall))opts.push(actBtn(L2('কী কী আছে?','What do you have?'),'',()=>{const st=p.stall;closeAct();openStall(st)}));
   opts.push(actBtn(L2('ধন্যবাদ, আসি','Thanks, goodbye'),'',closeAct));
+  if(p.beggar){actView(pName(p),role,reply,beggarOptions(p));return}
   const tipLine=tip?TIPS[(Math.random()*TIPS.length)|0]:null;
   actView(pName(p),role,tipLine?`${reply}  ${L2('— '+tipLine[0],'— '+tipLine[1])}`:reply,opts)}
 

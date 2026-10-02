@@ -2,6 +2,7 @@
 const card=document.getElementById('card');const $=id=>document.getElementById(id);
 function hideCard(){card.hidden=true}
 function statusOf(o){
+  if(o.beggar)return'Sitting with a bowl, asking passers-by for a little help.';
   if(o.T){const v=o;if(v.parked)return v.sleepy?'Napping on the seat until the afternoon rush.':'Waiting at the rickshaw stand for a fare.';if(v.dwell>0)return'Stopped in the road, taking passengers.';
     const r=v.r;if(r.stopS!==undefined&&v.s<r.stopS&&!green(r.arm)&&r.stopS-v.s<60)return'Held at Shapla Chattar by the traffic sergeant.';if(v.spd<.4)return'Stuck in the jam, squeezing sideways for a gap.';return`Moving at ${Math.round(v.spd*3.6)} km/h.`}
   if(o.role==='police')return o.kind==='constable'?'Standing in the road with a stick, waving rickshaws aside.':o.act==='wave'?'Waving his road through.':'Holding his road with a raised palm.';

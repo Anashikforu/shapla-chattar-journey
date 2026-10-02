@@ -3,10 +3,29 @@ const pigeons=[],crows=[],dogs=[];
 function genAnimals(){
   for(let i=0;i<34;i++){const a=RND()*TAU,r=rr(11.3,15.4);pigeons.push({hx:Math.cos(a)*r,hy:Math.sin(a)*r,x:Math.cos(a)*r,y:Math.sin(a)*r,z:0,st:'ground',ph:RND()*TAU})}
   for(let i=0;i<40&&spans.length;i++){const s=rpick(spans);crows.push({span:s,t:rr(.15,.85),w:(RND()*s.n)|0,st:'sit',x:0,y:0,z:0,ph:RND()*TAU,cd:rr(5,40)})}
-  for(const t of trees.slice(0,8))dogs.push({x:t.x+rr(-2,2),y:t.y+rr(1,3),col:rpick(['#c9a36b','#8a6a4a','#e0d0b0','#5a4a3a']),ph:RND()*TAU});
+  const mk=(kind,x,y,cols)=>dogs.push({kind,x,y,col:rpick(cols),ph:RND()*TAU,fc:RND()<.5?1:-1,st:'rest',t:rr(1,12),fix:false,barkT:rr(5,30)});
+  const DOGC=['#c9a36b','#8a6a4a','#e0d0b0','#5a4a3a','#b8a58a'],CATC=['#d9a066','#4a4440','#e8e0d0','#8a8a86','#c9824a'],GOATC=['#e8e0d0','#8a6a4a','#3a3430','#c9b89a'];
+  for(const t of trees.slice(0,8))mk('dog',t.x+rr(-2,2),t.y+rr(1,3),DOGC);
+  const fp=walks.filter(w=>!w.closed&&w.side!==0&&w.len>40);   // more strays along the footpaths
+  for(let i=0;i<16&&fp.length;i++){const P=rpick(fp),o=[];walkPos(P,rr(8,P.len-8),-(P.sw/2)+.7,o);if(inWorld(o[0],o[1],-20)&&Math.hypot(o[0],o[1])>RSW+6)mk('dog',o[0],o[1],DOGC)}
+  const food=stalls.filter(s=>['tea','hotel','grill','singara','fuchka','jhalmuri'].includes(s.type));   // cats hang about where food is
+  for(let i=0;i<12&&food.length;i++){const s=rpick(food);mk('cat',s.x+s.nx*(s.d/2+1.1)+s.tx*rr(-1,1),s.y+s.ny*(s.d/2+1.1)+s.ty*rr(-1,1),CATC)}
+  for(const F of[sites.baitul,sites.kamalapur,sites.green,sites.mgbhs])if(F)for(let i=0;i<2;i++){const c=FW(F,rr(8,F.L-8),rr(8,F.D-8));mk('goat',c[0],c[1],GOATC)}   // a few goats on the open grounds
 }
+const PACE={dog:1.5,cat:1.1,goat:.55},ROAM={dog:11,cat:4,goat:7};
+/* strays rest, trot to a spot near home, sniff about, rest again; dogs bark at the avatar and at night */
+function updWander(dt){
+  for(const d of dogs){
+    if(!d.fix){const f=nearestFree(d.x,d.y,10);if(f){d.x=f[0];d.y=f[1]}d.home=[d.x,d.y];d.fix=true}
+    d.barkT-=dt;d.t-=dt;
+    if(d.st==='rest'){if(d.t<=0){const a=Math.random()*TAU,r=mr(2,ROAM[d.kind]),tx=d.home[0]+Math.cos(a)*r,ty=d.home[1]+Math.sin(a)*r;if(!navAt(tx,ty)&&cellAt(tx,ty)!==2){d.tx=tx;d.ty=ty;d.st='trot'}else d.t=mr(3,8)}}
+    else if(d.st==='trot'){const dx=d.tx-d.x,dy=d.ty-d.y,L=Math.hypot(dx,dy),s=Math.min(L,PACE[d.kind]*dt);
+      if(L<.2){d.st='sniff';d.t=mr(2,5)}else{const nx=d.x+dx/L*s,ny=d.y+dy/L*s;if(navAt(nx,ny)||cellAt(nx,ny)===2){d.st='rest';d.t=mr(4,12)}else{d.x=nx;d.y=ny;d.ph+=dt*9;const f=sdir(dx,dy);if(Math.abs(f)>.05)d.fc=f>0?1:-1}}}
+    else if(d.st==='sniff'){if(d.t<=0){d.st='rest';d.t=mr(6,25)}}
+    if(d.kind==='dog'&&d.barkT<=0){const near=Math.hypot(d.x-me.x,d.y-me.y)<6,night=lightsOn()>.5;if(near||(night&&Math.random()<.3)){sfx('sfx_bark',d.x,d.y);d.barkT=mr(near?18:25,60)}else d.barkT=mr(5,20)}}}
 let flockT=20;
 function updAnimals(dt){
+  updWander(dt);
   flockT-=dt;if(flockT<=0){flockT=mr(25,60);for(const p of pigeons){p.st='fly';p.fa=Math.atan2(p.y,p.x);p.fr=mr(10,24);p.fz=mr(9,17);p.land=mr(10,20)}}
   for(const p of pigeons){p.ph+=dt*(p.st==='fly'?18:3);
     if(p.st==='fly'){p.fa+=dt*.55;p.x=lerp(p.x,Math.cos(p.fa)*p.fr,dt*1.5);p.y=lerp(p.y,Math.sin(p.fa)*p.fr,dt*1.5);p.z=lerp(p.z,p.fz,dt*1.2);p.land-=dt;if(p.land<=0){p.st='landing';const a=Math.random()*TAU,r=mr(11.3,15.4);p.hx=Math.cos(a)*r;p.hy=Math.sin(a)*r}}
