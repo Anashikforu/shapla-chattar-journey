@@ -451,6 +451,24 @@ const after = await page.evaluate(() => ({ b: document.getElementById('btnBld').
 const saveOk = before.b === after.b && before.f === after.f && Math.abs(after.hour - 15.5) < .5 && Math.hypot(before.x - after.x, before.y - after.y) < 1 && after.follow && before.w === after.w && before.g === after.g && Math.abs(before.e - after.e) < 4;
 console.log(`Save/load: ${saveOk ? 'restored' : 'NOT restored'} (${after.b}, ${after.f}, hour ${after.hour.toFixed(1)}, avatar ${before.x.toFixed(1)},${before.y.toFixed(1)} -> ${after.x.toFixed(1)},${after.y.toFixed(1)}, following=${after.follow}, wallet ${before.w} -> ${after.w}, energy ${before.e.toFixed(0)} -> ${after.e.toFixed(0)}, goal ${before.g} -> ${after.g})`);
 if (!saveOk) errors.push('save/load did not restore state');
+// save format: v2 stores the goal by id; an old v1 save (a position in the chain as it was before the meal goal) is migrated; a newer save is ignored
+const stored = await page.evaluate(() => JSON.parse(localStorage.getItem(window.__journey.SAVE_KEY)));
+console.log(`Save format: v${stored.v}, goal saved as "${stored.stat.gid}"`);
+if (stored.v !== 2 || typeof stored.stat.gid !== 'string') errors.push('saves should be version 2 with the goal stored by id: ' + JSON.stringify({ v: stored.v, gid: stored.stat.gid }));
+const withSave = async save => {   // a fresh browser profile that starts with this save already in storage
+  const c = await browser.createBrowserContext(), pg = await c.newPage(); await pg.setViewport({ width: 1000, height: 700 });
+  await pg.evaluateOnNewDocument(o => localStorage.setItem('shapla-journey-v1', JSON.stringify(o)), save);
+  await pg.goto(url, { waitUntil: 'load' }); await pg.waitForFunction(() => window.__journey && window.__journey.loaded(), { timeout: 30000 });
+  const r = await pg.evaluate(() => { const j = window.__journey; return { goal: (j.GOALS[j.STAT.goal] || {}).id || 'done', wallet: j.STAT.wallet }; }); await c.close(); return r;
+};
+const base = { hour: 9, cam: { x: 0, y: -22, z: 4.4 }, dir: 0, ang: 0, bmode: 'full', lang: 'bn', speed: 0, rain: 'auto', weekend: false, sound: true };
+const old = await withSave({ ...base, v: 1, stat: { w: 640, e: 80, g: 1 } });                        // before the meal goal existed: goal 1 was the bank
+const mid = await withSave({ ...base, v: 1, stat: { w: 500, e: 80, g: 1, a: false, f: false } });   // after it: goal 1 is the meal
+const newer = await withSave({ ...base, v: 9, stat: { w: 1, e: 5, gid: 'bank' } });
+console.log(`Save migration: old v1 -> ${old.goal} (wallet ${old.wallet}); later v1 -> ${mid.goal}; newer v9 ignored -> wallet ${newer.wallet}, goal ${newer.goal}`);
+if (old.goal !== 'bank' || old.wallet !== 640) errors.push('a v1 save from before the meal goal should migrate to the bank goal: ' + JSON.stringify(old));
+if (mid.goal !== 'eat') errors.push('a later v1 save should migrate to the meal goal: ' + JSON.stringify(mid));
+if (newer.wallet !== 300 || newer.goal !== 'fountain') errors.push('a save from a newer version should be ignored: ' + JSON.stringify(newer));
 // phone-sized run in a fresh browser context (no saved state): layout, status bar and the hotel menu must fit a 390x780 screen
 const ctx2 = await browser.createBrowserContext(), phone = await ctx2.newPage();
 await steady(phone);

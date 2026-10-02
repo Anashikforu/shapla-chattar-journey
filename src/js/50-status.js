@@ -17,17 +17,19 @@ function updEnergy(dt,moved,running){
 const bldCentre=en=>{const b=buildings.find(b=>b.name&&b.name[1]===en);return b?qCenter(b.foot):null};
 const siteCentre=F=>F?FW(F,F.L/2,F.D/2):null;
 const GOALS=[
- {bn:'শাপলা ফোয়ারার কাছে যান',en:'Walk to the Shapla fountain',at:()=>[0,0],r:24,pay:0},
- {bn:'কোনো রেস্তোরাঁয় খেয়ে নিন (মায়ের দোয়া হোটেল কাছেই)',en:'Eat a meal at a restaurant (Mayer Doa Hotel is close)',at:()=>RESTO.entry,r:0,pay:0,done:()=>STAT.ate},
- {bn:'বাংলাদেশ ব্যাংকে যান',en:'Walk to Bangladesh Bank',at:()=>bldCentre('Bangladesh Bank'),r:40,pay:100},
- {bn:'বায়তুল মোকাররমে যান',en:'Walk to Baitul Mukarram mosque',at:()=>siteCentre(sites.baitul),r:55,pay:100},
- {bn:'কমলাপুর রেল স্টেশনে যান',en:'Walk to Kamalapur railway station',at:()=>siteCentre(sites.kamalapur),r:55,pay:100},
- {bn:'দামি রেস্তোরাঁ দ্য স্কাইলাইনে খান',en:'Dine at The Skyline, the fine restaurant',at:()=>FINE&&FINE.entry,r:0,pay:0,done:()=>STAT.fine},
+ {id:'fountain',bn:'শাপলা ফোয়ারার কাছে যান',en:'Walk to the Shapla fountain',at:()=>[0,0],r:24,pay:0},
+ {id:'eat',bn:'কোনো রেস্তোরাঁয় খেয়ে নিন (মায়ের দোয়া হোটেল কাছেই)',en:'Eat a meal at a restaurant (Mayer Doa Hotel is close)',at:()=>RESTO.entry,r:0,pay:0,done:()=>STAT.ate},
+ {id:'bank',bn:'বাংলাদেশ ব্যাংকে যান',en:'Walk to Bangladesh Bank',at:()=>bldCentre('Bangladesh Bank'),r:40,pay:100},
+ {id:'baitul',bn:'বায়তুল মোকাররমে যান',en:'Walk to Baitul Mukarram mosque',at:()=>siteCentre(sites.baitul),r:55,pay:100},
+ {id:'kamalapur',bn:'কমলাপুর রেল স্টেশনে যান',en:'Walk to Kamalapur railway station',at:()=>siteCentre(sites.kamalapur),r:55,pay:100},
+ {id:'skyline',bn:'দামি রেস্তোরাঁ দ্য স্কাইলাইনে খান',en:'Dine at The Skyline, the fine restaurant',at:()=>FINE&&FINE.entry,r:0,pay:0,done:()=>STAT.fine},
 ];
-const goalNow=()=>{while(STAT.goal<GOALS.length&&!GOALS[STAT.goal].at())STAT.goal++;return STAT.goal<GOALS.length?GOALS[STAT.goal]:null};   // a goal whose place is missing is skipped
-function goalPos(){const g=goalNow();return g?g.at():null}
+/* a goal's place never moves once it exists, so look it up once (searching every building by name each frame was wasteful) */
+const gpos=g=>{if(!g._p){const p=g.at();if(p)g._p=p}return g._p||null};
+const goalNow=()=>{while(STAT.goal<GOALS.length&&!gpos(GOALS[STAT.goal]))STAT.goal++;return STAT.goal<GOALS.length?GOALS[STAT.goal]:null};   // a goal whose place is missing is skipped
+function goalPos(){const g=goalNow();return g?gpos(g):null}
 function updGoal(){
-  const g=goalNow();if(!g)return;const p=g.at();if(!p)return;
+  const g=goalNow();if(!g)return;const p=gpos(g);if(!p)return;
   if(g.done?g.done():Math.hypot(me.x-p[0],me.y-p[1])<=g.r){STAT.goal++;if(g.pay)addMoney(g.pay);
     if(!g.done)toast(`${LANG==='bn'?g.bn.replace(/যান$/,'পৌঁছেছেন'):'Reached: '+g.en.replace(/^Walk to /,'')}${g.pay?` · +৳${g.pay}`:''}`);
     if(!goalNow())toast('All goals done for now. Wander freely!')}}
@@ -38,7 +40,7 @@ function updateStatusUI(){
   const e=Math.round(STAT.energy);$('wallet').textContent=LANG==='bn'?bnTaka(STAT.wallet):STAT.wallet;
   $('energyFill').style.width=e+'%';$('energyBar').classList.toggle('low',STAT.energy<=25);$('energyBar').setAttribute('aria-valuenow',e);
   $('energyTxt').textContent=STAT.energy<=0?'exhausted':STAT.energy<=25?'tired':'';
-  const g=goalNow(),p=g&&g.at();
+  const g=goalNow(),p=g&&gpos(g);
   if(!g)$('goalTxt').textContent=LANG==='bn'?'আপাতত সব লক্ষ্য শেষ':'All done for now';
   else{$('goalTxt').textContent=LANG==='en'?g.en:g.bn;const d=p?Math.max(0,Math.hypot(me.x-p[0],me.y-p[1])-g.r):0;$('goalDist').textContent=p?` · ${Math.round(d/10)*10} m`:''}
   if(!g)$('goalDist').textContent=''}
