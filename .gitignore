@@ -5,3 +5,4 @@ __pycache__/
 index.test.html
 node_modules/
 tests/out/
+voices/voices.js

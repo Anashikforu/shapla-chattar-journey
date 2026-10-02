@@ -18,10 +18,7 @@ const REF = path.join(ROOT, 'tests', 'reference'), UPDATE = process.env.UPDATE_R
 fs.mkdirSync(REF, { recursive: true });
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.wav': 'audio/wav', '.mp3': 'audio/mpeg' };
 
-/* the real voices.js is ~30 MB of embedded audio; the test serves a deliberately stale one (3 clips) to prove the game still loads every file in voices/ */
-const STALE = 'window.SHAPLA_VOICES = { "bank_queue_1": "voices/bank_queue_1.wav", "guard_1": "voices/guard_1.wav", "rain_1": "voices/rain_1.wav" };\n';
 const server = http.createServer((req, res) => {
-  if (req.url.split('?')[0] === '/voices/voices.js') { res.writeHead(200, { 'Content-Type': 'text/javascript' }); return res.end(STALE); }
   const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]).replace(/^\/$/, '/index.html'));
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream' });
@@ -54,7 +51,7 @@ const allIds = [...new Set([...clipIds, ...sfxIds])], expectVoices = allIds.filt
 await page.waitForFunction(n => new RegExp(`^Voices ${n}/`).test(document.getElementById('btnVoices').textContent), { timeout: 60000 }, expectVoices)
   .catch(() => {}); 
 const voicesShown = await page.evaluate(() => document.getElementById('btnVoices').textContent);
-console.log(`Voices: ${voicesShown} (expected ${expectVoices} of ${allIds.length} from the ${haveFiles.length} files in voices/, with a 3-clip manifest)`);
+console.log(`Voices: ${voicesShown} (expected ${expectVoices} of ${allIds.length} from the ${haveFiles.length} files in voices/)`);
 if (!voicesShown.startsWith(`Voices ${expectVoices}/`)) errors.push(`not every clip in voices/ was loaded: ${voicesShown}, expected ${expectVoices}`);
 
 const fps = () => page.evaluate(() => new Promise(r => { let n = 0; const t = performance.now(); const f = () => { n++; performance.now() - t < 2000 ? requestAnimationFrame(f) : r(n / 2); }; requestAnimationFrame(f); }));

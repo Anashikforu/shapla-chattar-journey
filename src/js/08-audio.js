@@ -76,9 +76,12 @@ async function loadAudioFiles(files){
   updateVoiceUI();toast(n?`Loaded ${n} clip${n>1?'s':''}. ${n&&!A.on?'Turn Sound on to hear them.':''}`:'No files matched a clip ID. Name them like hawker_tea_1.mp3');
 }
 async function loadBundled(){ // every clip in voices/: the voices.js manifest, plus anything listed in voices/files.json that the manifest lacks
-  const m=window.SHAPLA_VOICES||{};audioInit();const jobs=[];
+  audioInit();const jobs=[];let list=null;
+  try{const r=await fetch('voices/files.json');if(r.ok)list=await r.json()}catch(e){}
+  if(!list){await new Promise(r=>{const s=document.createElement('script');s.src='voices/voices.js';s.onload=s.onerror=r;document.head.appendChild(s)})}   // opened from a file: only the embedded manifest can work
+  const m=list?{}:(window.SHAPLA_VOICES||{});
   for(const [id,v] of Object.entries(m))for(const src of[].concat(v))jobs.push([id,src]);
-  try{const r=await fetch('voices/files.json');if(r.ok)for(const f of await r.json()){const stem=f.replace(/\.[a-z0-9]+$/i,''),id=ALL_IDS.find(i=>stem===i||stem.startsWith(i+'-'));if(id&&!(id in m))jobs.push([id,'voices/'+f])}}catch(e){}   // a stale manifest must not hide files
+  try{if(list)for(const f of list){const stem=f.replace(/\.[a-z0-9]+$/i,''),id=ALL_IDS.find(i=>stem===i||stem.startsWith(i+'-'));if(id&&!(id in m))jobs.push([id,'voices/'+f])}}catch(e){}   // a stale manifest must not hide files
   let next=0,done=0;
   const worker=async()=>{while(next<jobs.length){const[id,src]=jobs[next++];
     try{const r=await fetch(src);const buf=await A.ctx.decodeAudioData(await r.arrayBuffer());if(!A.clips.has(id))A.clips.set(id,[]);A.clips.get(id).push(buf)}catch(e){}

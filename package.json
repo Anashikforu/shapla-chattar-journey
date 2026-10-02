@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node build.mjs index.test.html --hooks && node tests/smoke.mjs"
+    "test": "node build.mjs && node build.mjs index.test.html --hooks && node tests/smoke.mjs",
+    "voices": "node tools/voices-to-mp3.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "^25.12.0"
