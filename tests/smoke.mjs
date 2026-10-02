@@ -510,6 +510,22 @@ const gift = await page.evaluate(async () => {
 });
 console.log(`Giving: panel ${gift.opened ? 'opened' : 'DID NOT OPEN'}, wallet 100 -> ${gift.wallet}, alms ${gift.alms}, reply "${gift.said.slice(0, 40)}"`);
 if (!gift.opened || !gift.found || gift.wallet !== 90 || gift.alms !== 10 || !gift.said) errors.push('giving ৳10 to a beggar did not work: ' + JSON.stringify(gift));
+// traffic control: vehicles stop at red, and each sergeant's pose follows his own road's light
+const traffic = await page.evaluate(() => new Promise(done => {
+  const j = window.__journey, f = j.nearestFree(-400, 380, 40); j.me.x = j.me.dx = f[0]; j.me.y = j.me.dy = f[1];   // parked far away so the avatar cannot hold traffic up
+  const seen = new Map(); let green = 0, red = 0, wrongPose = 0, poses = 0; const t0 = performance.now();
+  const tick = () => {
+    for (const v of j.vehicles) { if (v.parked || !v.r || v.r.stopS === undefined) continue; const prev = seen.get(v.id); seen.set(v.id, v.s);
+      if (prev !== undefined && prev < v.r.stopS && v.s >= v.r.stopS) { if (j.green(v.r.arm)) green++; else red++; } }
+    for (const pd of j.podiums) if (pd.cop) { poses++; if (pd.cop.act !== (j.green(pd.arm) ? 'wave' : 'police')) wrongPose++; }
+    if (performance.now() - t0 > 40000) done({ green, red, wrongPose, poses }); else requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}));
+console.log(`Traffic control: ${traffic.green + traffic.red} vehicles crossed a stop line in 40 s, ${traffic.red} on red; sergeants' pose matched their light in ${traffic.poses - traffic.wrongPose} of ${traffic.poses} checks`);
+if (traffic.green + traffic.red < 20) errors.push('too few vehicles reached a stop line to judge the signals: ' + JSON.stringify(traffic));
+else if (traffic.red > (traffic.green + traffic.red) * .1) errors.push('too many vehicles ran the red: ' + JSON.stringify(traffic));
+if (traffic.wrongPose) errors.push('a sergeant showed the wrong signal: ' + JSON.stringify(traffic));
 // phone-sized run in a fresh browser context (no saved state): layout, status bar and the hotel menu must fit a 390x780 screen
 const ctx2 = await browser.createBrowserContext(), phone = await ctx2.newPage();
 await steady(phone);

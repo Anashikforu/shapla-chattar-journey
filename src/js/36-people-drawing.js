@@ -61,7 +61,7 @@ function drawPerson0(c,p,x,y,lod,extra){
   else if(act==='shake'){const k=Math.sin(t*22)*.05;hR=[.3+ls,.72+up+k];hL=[.26+ls,.66+up+k]}
   else if(act==='chop'){const k=Math.max(0,Math.sin(t*5));hR=[.3+ls-k*.05,.62+up+k*.35];hL=[.28,.55+up]}
   else if(act==='serve'){const k=Math.sin(t*3);hR=[.3+ls,.66+up+k*.05];hL=[.25,.62+up]}
-  else if(act==='police'){if(phase===0){hL=[-.55,sh-.02];hR=[.55,sh-.02]}else{const k=Math.sin(t*4);hR=[.25+k*.12,sh+.28];hL=[-.2,.5]}}
+  else if(act==='police'){hL=[-.55,sh-.02];hR=[.55,sh-.02]}   // stop: both arms out. 'wave' (go) is drawn below; which one a sergeant shows follows his own road's light
   else if(act==='drink')hR=[.1+ls,.88+up];
   else if(act==='smoke')hR=[.08+ls,.9+up];
   else if(act==='sweep'){const k=Math.sin(t*3+x);hR=[.25+k*.15,.55+up];hL=[.15+k*.15,.72+up]}
