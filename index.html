@@ -908,11 +908,16 @@ function drawMosqueBits(c,p){
   p.minaret=[mt[0],mt[1]-2];
 }
 const SS=3;let spriteBudget=0;
+/* building images are made on demand and capped; the one drawn longest ago goes first, so memory stays bounded on phones */
+const SPR={set:new Set(),frame:0,made:0,cap:(innerWidth<700||(navigator.deviceMemory&&navigator.deviceMemory<=4))?260:700};
+function dropSprite(b){if(b.mip)for(const m of b.mip){m.width=0;m.height=0}b.mip=null;b.spr=null;SPR.set.delete(b)}
+function evictSprites(){while(SPR.set.size>SPR.cap){let old=null;for(const b of SPR.set)if(!old||b.sprT<old.sprT)old=b;if(!old||old.sprT>=SPR.frame)break;dropSprite(old)}}   // never one that is on screen this frame
+function primeSprites(){const fx=cam.x,fy=cam.y;const near=buildings.map(b=>({b,d:Math.hypot((b.bb[0]+b.bb[2])/2-fx,(b.bb[1]+b.bb[3])/2-fy)})).sort((a,b)=>a.d-b.d).slice(0,SPR.cap>>1);for(const o of near)if(!o.b.spr)makeSprite(o.b)}   // the buildings around the first view; the rest appear as you go
 function makeSprite(b){
   const[x0,y0,x1,y1]=b.bb,w=Math.ceil((x1-x0)*SS),h=Math.ceil((y1-y0)*SS);const cvs=document.createElement('canvas');cvs.width=w;cvs.height=h;const c=cvs.getContext('2d');
   c.setTransform(SS,0,0,SS,-x0*SS,-y0*SS);const oS=S,oV=VEC,oB=BOIL;S=SS;VEC=false;BOIL=0;for(const p of b.parts)drawPart(c,p,b);S=oS;VEC=oV;BOIL=oB;
   b.mip=[cvs];let src=cvs;for(let i=0;i<2;i++){const m=document.createElement('canvas');m.width=Math.max(1,src.width>>1);m.height=Math.max(1,src.height>>1);m.getContext('2d').drawImage(src,0,0,m.width,m.height);b.mip.push(m);src=m}
-  b.spr=cvs;
+  b.spr=cvs;b.sprT=SPR.frame;SPR.set.add(b);SPR.made++;if(SPR.set.size>SPR.cap)evictSprites();
 }
 
 /* ---------------- trees, poles, wires, banners ---------------- */
@@ -1955,7 +1960,7 @@ function drawFoot(c,b){for(const p of b.parts){if(p.z0>0)continue;c.globalAlpha=
 function inQuad(q,x,y){let s0=0;for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4],cr=(b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0]);if(cr!==0){const sg=cr>0?1:-1;if(s0&&sg!==s0)return false;s0=sg}}return true}
 function scrBox(bb){const a=toScreen(bb[0],bb[1]),b=toScreen(bb[2],bb[1]),c=toScreen(bb[0],bb[3]),d=toScreen(bb[2],bb[3]);return[Math.min(a[0],b[0],c[0],d[0]),Math.min(a[1],b[1],c[1],d[1]),Math.max(a[0],b[0],c[0],d[0]),Math.max(a[1],b[1],c[1],d[1])]}
 function render(){
-  const L=lightsOn(),z=cam.zoom;
+  SPR.frame++;const L=lightsOn(),z=cam.zoom;
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='#efe8d8';ctx.fillRect(0,0,W,H);
   applyCam(ctx);S=z;VEC=true;BOIL=REDUCED?0:Math.floor(simT*5)%3;{const cs=[toWorld(0,0),toWorld(W,0),toWorld(0,H),toWorld(W,H)];VX0=Math.min(...cs.map(q=>q[0]));VX1=Math.max(...cs.map(q=>q[0]));VY0=Math.min(...cs.map(q=>q[1]));VY1=Math.max(...cs.map(q=>q[1]))}
   if(z<6&&groundSpr){ctx.imageSmoothingEnabled=true;ctx.drawImage(groundSpr,-E-80,-E-80,2*E+160,2*E+160)}else paintGround(ctx,z,true);
@@ -1989,7 +1994,7 @@ function render(){
       if(BMODE==='flat'){drawFoot(ctx,o);break}
       if(ghost&&BMODE==='cut'){drawStub(ctx,o,3.2);break}
       if(ghost){ctx.save();ctx.globalAlpha=.24;if(o.spr)ctx.drawImage(o.mip[0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1]);ctx.restore();ctx.beginPath();for(const p of o.parts){J=mulberry32(p.seed+BOIL);spoly(ctx,p.hull,.2)}pencil(ctx,INK,.35,1);ctx.stroke();ctx.globalAlpha=1;break}
-      if(z<6.8&&o.spr)ctx.drawImage(o.mip[z*DPR<1.4?2:z*DPR<2.8?1:0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1]);else for(const p of o.parts)drawPart(ctx,p,o);break}
+      if(z<6.8&&o.spr){o.sprT=SPR.frame;ctx.drawImage(o.mip[z*DPR<1.4?2:z*DPR<2.8?1:0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1])}else for(const p of o.parts)drawPart(ctx,p,o);break}
     case 'tr':drawTree(ctx,o,lodT);break;
     case 'po':drawPole(ctx,o,lodT);break;
     case 'sp':drawSpan(ctx,o);break;
@@ -2076,7 +2081,7 @@ function boot(){
   grid.clear();for(const o of staticObs)gridAdd(o);for(const v of vehicles)gridAdd(v);seedTraffic();
   for(let k=0;k<260;k++){spawnVehicles(.2);grid.clear();for(const v of vehicles)gridAdd(v);for(const o of staticObs)gridAdd(o);for(const v of vehicles)updVehicle(v,.2);for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead)vehicles.splice(i,1);phaseT+=.2;if(phaseT>=PHASE_LEN){phaseT=0;phase=1-phase}}
   for(const v of vehicles){v.dx=v.x;v.dy=v.y}bubbles.length=0;events.length=0;
-  for(const b of buildings)makeSprite(b);
+  primeSprites();
   initAvatar();initRestaurantEntry();
   simT=0;updateVoiceUI();loadBundled();
   $('loading').classList.add('done');setTimeout(()=>$('loading').remove(),700);
@@ -2093,7 +2098,7 @@ function boot(){
 /* ---------------- view controls ---------------- */
 const ANGLES=[['bird',"bird's-eye",-0.32,0.8],['street','street level',-0.26,1.35],['top','top-down',-0.14,0.38]];let angIdx=0;
 const FACING=['north','west','south','east'];
-function applyView(msg){toast(msg||'Turning the sketchbook…');setTimeout(()=>{setViewConsts();for(const b of buildings){geomBuilding(b);b.spr=null;b.mip=null}for(const b of buildings)makeSprite(b);$('facing').textContent='Looking '+FACING[VIEW.dir];toastT=1.2},40)}
+function applyView(msg){toast(msg||'Turning the sketchbook…');setTimeout(()=>{setViewConsts();for(const b of buildings){geomBuilding(b);dropSprite(b)}primeSprites();$('facing').textContent='Looking '+FACING[VIEW.dir];toastT=1.2},40)}
 function rotateView(d){VIEW.dir=(VIEW.dir+d+4)%4;VIEW.th=VIEW.dir*Math.PI/2;applyView()}
 const BMODES=[['full','full'],['cut','cut away'],['flat','footprints']];function cycleB(){const i=(BMODES.findIndex(m=>m[0]===BMODE)+1)%3;BMODE=BMODES[i][0];$('btnBld').textContent='Buildings: '+BMODES[i][1]}
 $('btnBld').onclick=cycleB;addEventListener('keydown',e=>{if((e.key==='b'||e.key==='B')&&e.target.tagName!=='INPUT')cycleB()});

@@ -9,7 +9,7 @@ function drawFoot(c,b){for(const p of b.parts){if(p.z0>0)continue;c.globalAlpha=
 function inQuad(q,x,y){let s0=0;for(let i=0;i<4;i++){const a=q[i],b=q[(i+1)%4],cr=(b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0]);if(cr!==0){const sg=cr>0?1:-1;if(s0&&sg!==s0)return false;s0=sg}}return true}
 function scrBox(bb){const a=toScreen(bb[0],bb[1]),b=toScreen(bb[2],bb[1]),c=toScreen(bb[0],bb[3]),d=toScreen(bb[2],bb[3]);return[Math.min(a[0],b[0],c[0],d[0]),Math.min(a[1],b[1],c[1],d[1]),Math.max(a[0],b[0],c[0],d[0]),Math.max(a[1],b[1],c[1],d[1])]}
 function render(){
-  const L=lightsOn(),z=cam.zoom;
+  SPR.frame++;const L=lightsOn(),z=cam.zoom;
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.globalCompositeOperation='source-over';ctx.globalAlpha=1;ctx.fillStyle='#efe8d8';ctx.fillRect(0,0,W,H);
   applyCam(ctx);S=z;VEC=true;BOIL=REDUCED?0:Math.floor(simT*5)%3;{const cs=[toWorld(0,0),toWorld(W,0),toWorld(0,H),toWorld(W,H)];VX0=Math.min(...cs.map(q=>q[0]));VX1=Math.max(...cs.map(q=>q[0]));VY0=Math.min(...cs.map(q=>q[1]));VY1=Math.max(...cs.map(q=>q[1]))}
   if(z<6&&groundSpr){ctx.imageSmoothingEnabled=true;ctx.drawImage(groundSpr,-E-80,-E-80,2*E+160,2*E+160)}else paintGround(ctx,z,true);
@@ -43,7 +43,7 @@ function render(){
       if(BMODE==='flat'){drawFoot(ctx,o);break}
       if(ghost&&BMODE==='cut'){drawStub(ctx,o,3.2);break}
       if(ghost){ctx.save();ctx.globalAlpha=.24;if(o.spr)ctx.drawImage(o.mip[0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1]);ctx.restore();ctx.beginPath();for(const p of o.parts){J=mulberry32(p.seed+BOIL);spoly(ctx,p.hull,.2)}pencil(ctx,INK,.35,1);ctx.stroke();ctx.globalAlpha=1;break}
-      if(z<6.8&&o.spr)ctx.drawImage(o.mip[z*DPR<1.4?2:z*DPR<2.8?1:0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1]);else for(const p of o.parts)drawPart(ctx,p,o);break}
+      if(z<6.8&&o.spr){o.sprT=SPR.frame;ctx.drawImage(o.mip[z*DPR<1.4?2:z*DPR<2.8?1:0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1])}else for(const p of o.parts)drawPart(ctx,p,o);break}
     case 'tr':drawTree(ctx,o,lodT);break;
     case 'po':drawPole(ctx,o,lodT);break;
     case 'sp':drawSpan(ctx,o);break;

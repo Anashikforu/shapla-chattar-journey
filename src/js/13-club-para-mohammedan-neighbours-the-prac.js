@@ -148,10 +148,15 @@ function drawMosqueBits(c,p){
   p.minaret=[mt[0],mt[1]-2];
 }
 const SS=3;let spriteBudget=0;
+/* building images are made on demand and capped; the one drawn longest ago goes first, so memory stays bounded on phones */
+const SPR={set:new Set(),frame:0,made:0,cap:(innerWidth<700||(navigator.deviceMemory&&navigator.deviceMemory<=4))?260:700};
+function dropSprite(b){if(b.mip)for(const m of b.mip){m.width=0;m.height=0}b.mip=null;b.spr=null;SPR.set.delete(b)}
+function evictSprites(){while(SPR.set.size>SPR.cap){let old=null;for(const b of SPR.set)if(!old||b.sprT<old.sprT)old=b;if(!old||old.sprT>=SPR.frame)break;dropSprite(old)}}   // never one that is on screen this frame
+function primeSprites(){const fx=cam.x,fy=cam.y;const near=buildings.map(b=>({b,d:Math.hypot((b.bb[0]+b.bb[2])/2-fx,(b.bb[1]+b.bb[3])/2-fy)})).sort((a,b)=>a.d-b.d).slice(0,SPR.cap>>1);for(const o of near)if(!o.b.spr)makeSprite(o.b)}   // the buildings around the first view; the rest appear as you go
 function makeSprite(b){
   const[x0,y0,x1,y1]=b.bb,w=Math.ceil((x1-x0)*SS),h=Math.ceil((y1-y0)*SS);const cvs=document.createElement('canvas');cvs.width=w;cvs.height=h;const c=cvs.getContext('2d');
   c.setTransform(SS,0,0,SS,-x0*SS,-y0*SS);const oS=S,oV=VEC,oB=BOIL;S=SS;VEC=false;BOIL=0;for(const p of b.parts)drawPart(c,p,b);S=oS;VEC=oV;BOIL=oB;
   b.mip=[cvs];let src=cvs;for(let i=0;i<2;i++){const m=document.createElement('canvas');m.width=Math.max(1,src.width>>1);m.height=Math.max(1,src.height>>1);m.getContext('2d').drawImage(src,0,0,m.width,m.height);b.mip.push(m);src=m}
-  b.spr=cvs;
+  b.spr=cvs;b.sprT=SPR.frame;SPR.set.add(b);SPR.made++;if(SPR.set.size>SPR.cap)evictSprites();
 }
 

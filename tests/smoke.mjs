@@ -469,6 +469,22 @@ console.log(`Save migration: old v1 -> ${old.goal} (wallet ${old.wallet}); later
 if (old.goal !== 'bank' || old.wallet !== 640) errors.push('a v1 save from before the meal goal should migrate to the bank goal: ' + JSON.stringify(old));
 if (mid.goal !== 'eat') errors.push('a later v1 save should migrate to the meal goal: ' + JSON.stringify(mid));
 if (newer.wallet !== 300 || newer.goal !== 'fountain') errors.push('a save from a newer version should be ignored: ' + JSON.stringify(newer));
+// memory: building images are made on demand near the camera and capped, not all 1,170 at start
+const mem = await page.evaluate(() => {
+  const { SPR, SS, buildings, makeSprite, primeSprites, dropSprite } = window.__journey, mb = px => px * 4 / 1048576;
+  const used = () => { let px = 0; for (const b of buildings) if (b.mip) for (const m of b.mip) px += m.width * m.height; return px; };
+  const all = buildings.reduce((a, b) => a + Math.ceil((b.bb[2] - b.bb[0]) * SS) * Math.ceil((b.bb[3] - b.bb[1]) * SS) * (1 + 1 / 4 + 1 / 16), 0);
+  const out = { n: buildings.length, cap: SPR.cap, held: SPR.set.size, nowMB: mb(used()), allMB: mb(all) };
+  const cap0 = SPR.cap; SPR.cap = 100;   // eviction: build 300 sprites over 30 frames with room for 100
+  for (const b of buildings) dropSprite(b);
+  for (let i = 0; i < 300; i++) { if (i % 10 === 0) SPR.frame++; makeSprite(buildings[i]); }
+  out.afterBurst = SPR.set.size; out.firstGone = !buildings[0].spr && !buildings[0].mip; out.lastKept = !!buildings[299].spr;
+  SPR.cap = cap0; for (const b of buildings) dropSprite(b); primeSprites();
+  return out;
+});
+console.log(`Building images: ${mem.held} of ${mem.n} held at start (cap ${mem.cap}), ${mem.nowMB.toFixed(0)} MB now vs ${mem.allMB.toFixed(0)} MB if all were built; eviction keeps ${mem.afterBurst} after building 300 with room for 100`);
+if (!(mem.held <= mem.cap && mem.held < mem.n * .7)) errors.push('building images should be built on demand under a cap: ' + JSON.stringify(mem));
+if (!(mem.afterBurst <= 100 && mem.firstGone && mem.lastKept)) errors.push('the oldest building image should be dropped first: ' + JSON.stringify(mem));
 // phone-sized run in a fresh browser context (no saved state): layout, status bar and the hotel menu must fit a 390x780 screen
 const ctx2 = await browser.createBrowserContext(), phone = await ctx2.newPage();
 await steady(phone);

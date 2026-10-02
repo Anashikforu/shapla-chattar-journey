@@ -7,7 +7,7 @@ function boot(){
   grid.clear();for(const o of staticObs)gridAdd(o);for(const v of vehicles)gridAdd(v);seedTraffic();
   for(let k=0;k<260;k++){spawnVehicles(.2);grid.clear();for(const v of vehicles)gridAdd(v);for(const o of staticObs)gridAdd(o);for(const v of vehicles)updVehicle(v,.2);for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead)vehicles.splice(i,1);phaseT+=.2;if(phaseT>=PHASE_LEN){phaseT=0;phase=1-phase}}
   for(const v of vehicles){v.dx=v.x;v.dy=v.y}bubbles.length=0;events.length=0;
-  for(const b of buildings)makeSprite(b);
+  primeSprites();
   initAvatar();initRestaurantEntry();
   simT=0;updateVoiceUI();loadBundled();
   $('loading').classList.add('done');setTimeout(()=>$('loading').remove(),700);
