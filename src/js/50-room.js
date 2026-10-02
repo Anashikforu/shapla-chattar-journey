@@ -39,7 +39,7 @@ function curtains(c,x0,x1,y0,y1,col,gold){   // drapes either side of the window
     if(gold){c.fillStyle='#e8c98a';c.beginPath();circ(c,ex+ox*.45,y1-.9,.09);c.fill()}}
   rpoly(c,rrect(x0-.7,y0-.3,x1+.7,y0-.2),wash('#6b4a32',.9),INK,92)}
 function drawRoom(dt){
-  ROOM.t+=dt;simT+=dt;if(ROOM.sayT>0)ROOM.sayT-=dt;if(eating.dish){eating.t+=dt;if(eating.t>2.2)finishEating()}
+  ROOM.t+=dt;simT+=dt;audioIndoors(ROOM.R.tier);if(ROOM.sayT>0)ROOM.sayT-=dt;if(eating.dish){eating.t+=dt;if(eating.t>2.2)finishEating()}
   const w=Math.round(W*DPR),h=Math.round(H*DPR);if(roomCv.width!==w||roomCv.height!==h){roomCv.width=w;roomCv.height=h}
   const c=rctx,k=Math.min(W/17,H*.6/8.6),R=ROOM.R,ST=ROOM.st,T=ST.tier,menu=R.menu;ROOM.k=k;ROOM.oy=H*.1+5.2*k;S=k;VEC=true;BOIL=REDUCED?0:Math.floor(ROOM.t*5)%3;
   c.setTransform(DPR,0,0,DPR,0,0);c.globalCompositeOperation='source-over';c.globalAlpha=1;c.fillStyle='#efe8d8';c.fillRect(0,0,W,H);

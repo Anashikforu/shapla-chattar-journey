@@ -1,15 +1,16 @@
 
 /* ---------------- player avatar: walk with WASD / arrows, or tap the ground ---------------- */
+const WALL=new Uint8Array(MW*MW);   // building footprints only; sound muffling reads this
 const nav=new Uint8Array(MW*MW);   // 1 = the avatar cannot stand here (building lots, island, trunks, stalls)
 const me={role:'me',name:'You',x:0,y:0,dx:0,dy:0,fc:1,ph:0,pose:'stand',act:null,spd:0,path:null,goal:null,stuck:0,look:null};
 const navAt=(x,y)=>{const k=mk(x,y);return k<0||nav[k]===1||Math.abs(x)>E-8||Math.abs(y)>E-8};   // true = blocked
 function initNav(){
   /* solid ground: building footprints (not whole reserved sites, so plazas, campuses, the station hall and grounds are walkable), the island, trunks, stalls, street furniture */
   const cells=(x,y,r,f)=>{for(let j=Math.floor(y-r+MO);j<=Math.floor(y+r+MO);j++)for(let i=Math.floor(x-r+MO);i<=Math.floor(x+r+MO);i++){if(i<0||j<0||i>=MW||j>=MW)continue;if(f(i+.5-MO-x,j+.5-MO-y))nav[j*MW+i]=1}};
-  const quad=q=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1])}
-    for(let j=Math.floor(y0+MO)-1;j<=Math.ceil(y1+MO)+1;j++)for(let i=Math.floor(x0+MO)-1;i<=Math.ceil(x1+MO)+1;i++){if(i<0||j<0||i>=MW||j>=MW)continue;if(inQuad(q,i-MO+.5,j-MO+.5))nav[j*MW+i]=1}
-    for(let e=0;e<4;e++){const a=q[e],b=q[(e+1)%4],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/.35));for(let s=0;s<=n;s++){const k=mk(a[0]+(b[0]-a[0])*s/n,a[1]+(b[1]-a[1])*s/n);if(k>=0)nav[k]=1}}};
-  for(const b of buildings)for(const p of b.parts)if(!(p.z0>0))quad(p.q);
+  const quad=(q,w)=>{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of q){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1])}
+    for(let j=Math.floor(y0+MO)-1;j<=Math.ceil(y1+MO)+1;j++)for(let i=Math.floor(x0+MO)-1;i<=Math.ceil(x1+MO)+1;i++){if(i<0||j<0||i>=MW||j>=MW)continue;if(inQuad(q,i-MO+.5,j-MO+.5)){nav[j*MW+i]=1;if(w)WALL[j*MW+i]=1}}
+    for(let e=0;e<4;e++){const a=q[e],b=q[(e+1)%4],n=Math.max(1,Math.ceil(Math.hypot(b[0]-a[0],b[1]-a[1])/.35));for(let s=0;s<=n;s++){const k=mk(a[0]+(b[0]-a[0])*s/n,a[1]+(b[1]-a[1])*s/n);if(k>=0){nav[k]=1;if(w)WALL[k]=1}}}};
+  for(const b of buildings)for(const p of b.parts)if(!(p.z0>0))quad(p.q,true);
   for(let k=0;k<nav.length;k++)if(mask[k]===3)nav[k]=1;
   for(const t of trees)cells(t.x,t.y,.7,(u,v)=>u*u+v*v<=.49);
   for(const s of stalls){const hw=s.w/2+.2,hd=s.d/2+.2;cells(s.x,s.y,Math.hypot(hw,hd),(u,v)=>Math.abs(u*s.tx+v*s.ty)<=hw&&Math.abs(u*s.nx+v*s.ny)<=hd)}

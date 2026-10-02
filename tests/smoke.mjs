@@ -59,10 +59,10 @@ if (!voicesShown.startsWith(`Voices ${expectVoices}/`)) errors.push(`not every c
 
 const fps = () => page.evaluate(() => new Promise(r => { let n = 0; const t = performance.now(); const f = () => { n++; performance.now() - t < 2000 ? requestAnimationFrame(f) : r(n / 2); }; requestAnimationFrame(f); }));
 /* wait for the scene to finish what it is doing: toast gone, camera arrived, a few frames drawn */
-const settled = pg => pg.waitForFunction(() => { const j = window.__journey; if (!j || !j.loaded()) return false; const c = j.cam; return document.getElementById('toast').hidden && Math.abs(c.zoom - c.tz) < .02 * c.tz && Math.hypot(c.x - c.tx, c.y - c.ty) < .3; }, { timeout: 10000 })
+const settled = pg => pg.waitForFunction(() => { const j = window.__journey; if (!j || !j.loaded()) return false; const c = j.cam; const h = Math.floor(j.hour()), want = `${(h % 12) || 12}:`, clock = document.getElementById('clockEn').textContent; return document.getElementById('toast').hidden && Math.abs(c.zoom - c.tz) < .02 * c.tz && Math.hypot(c.x - c.tx, c.y - c.ty) < .3 && clock.startsWith(want) && clock.endsWith(h < 12 ? 'AM' : 'PM'); }, { timeout: 10000 })
   .then(() => pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))))));
 /* compare a screenshot with its approved 96-px-wide thumbnail: catches blank or broken scenes and big layout changes, shrugs off moving traffic */
-const THRESH = { mad: 11, bad: .10, dev: 8 };   // the same scene varies by at most ~6.5 / 4% between runs
+const THRESH = { mad: 14, bad: .13, dev: 8 }, NIGHT = { mad: 22, bad: .20 };   // run to run the same scene differs by up to ~11 (night ~16); a wrong or blank picture scores 50+
 const cmp = (pg, curB64, refB64) => pg.evaluate(async (curB64, refB64, w) => {
   const load = async b => { const i = new Image(); i.src = 'data:image/png;base64,' + b; await i.decode(); return i; };
   const cur = await load(curB64), h = Math.round(w * cur.naturalHeight / cur.naturalWidth);
@@ -84,7 +84,7 @@ const compareRef = async (pg, name, file) => {
   looks.push(`${name}: diff ${r.mad === undefined ? 'size changed' : r.mad.toFixed(1) + ' / ' + (r.bad * 100).toFixed(0) + '% cells'}, contrast ${r.dev.toFixed(0)}`);
   if (r.dev < THRESH.dev) errors.push(`${name}: the picture looks blank (contrast ${r.dev.toFixed(1)})`);
   if (r.size) errors.push(`${name}: screenshot size differs from its reference (run UPDATE_REFS=1 if intended)`);
-  else if (r.mad > THRESH.mad || r.bad > THRESH.bad) errors.push(`${name}: differs from the approved reference (mean diff ${r.mad.toFixed(1)}, ${(r.bad * 100).toFixed(0)}% of cells); run UPDATE_REFS=1 if the change is intended`);
+  else if (r.mad > (/night/.test(name) ? NIGHT.mad : THRESH.mad) || r.bad > (/night/.test(name) ? NIGHT.bad : THRESH.bad)) errors.push(`${name}: differs from the approved reference (mean diff ${r.mad.toFixed(1)}, ${(r.bad * 100).toFixed(0)}% of cells); run UPDATE_REFS=1 if the change is intended`);
 };
 /* a screenshot is taken at a fixed hour with the world paused, so the sky and shadows are the same every run */
 const HOURS = { '07-night': 21 }, hourFor = name => HOURS[name] ?? (/^(12|13)/.test(name) ? 19 : /^(09|10|11)/.test(name) ? 10 : 8.5);
@@ -169,6 +169,51 @@ const wall = await page.evaluate(() => {
 });
 console.log(`Avatar walls: building centre ${wall ? 'blocked' : 'OPEN'}, avatar ${wall && !wall.blocked ? 'stayed outside' : 'CLIPPED IN'}`);
 if (!wall || wall.blocked) errors.push('avatar can walk into buildings');
+// positional audio: the avatar is the listener; reach depends on the sound; buildings muffle; ambience follows what is near
+const audio = await page.evaluate(() => {
+  const { me, cam, spatial, nearbyLevels, toScreen, navAt, nearestFree, buildings, qCenter } = window.__journey, out = {};
+  const f = nearestFree(-60, 60, 80); me.x = f[0]; me.y = f[1]; cam.follow = me;
+  const rightIsPlusX = toScreen(me.x + 10, me.y)[0] > toScreen(me.x, me.y)[0], r = rightIsPlusX ? 1 : -1;
+  const R = spatial(me.x + 15 * r, me.y, 'hawker_tea_1'), L = spatial(me.x - 15 * r, me.y, 'hawker_tea_1');
+  out.pan = [R.pan, L.pan];
+  const at = (d, id) => spatial(me.x + d, me.y + 0.01, id).g;
+  out.voice = [at(10, 'hawker_tea_1'), at(50, 'hawker_tea_1')];
+  out.horn = [at(100, 'sfx_horn_car'), at(140, 'sfx_horn_car')];
+  const z1 = (cam.zoom = 3, spatial(me.x + 20, me.y, 'hawker_tea_1').g), z2 = (cam.zoom = 30, spatial(me.x + 20, me.y, 'hawker_tea_1').g);
+  const camX = cam.x; cam.x += 250; const moved = spatial(me.x + 20, me.y, 'hawker_tea_1').g; cam.x = camX;
+  // not following the avatar and zoomed far out, the listener drifts toward the camera (at most half way); zoomed in it does not
+  cam.follow = null; cam.zoom = 1.2; const camX2 = cam.x; cam.x = me.x + 200; const drift = Math.abs(window.__journey.listener().x - me.x); cam.zoom = 20; const still = Math.abs(window.__journey.listener().x - me.x); cam.x = camX2; cam.follow = me;
+  out.drift = [drift, still];
+  out.zoomSame = Math.abs(z1 - z2) < 1e-9; out.cameraIgnored = Math.abs(moved - z1) < 1e-9;
+  // muffling: one source with a building in the way, one at the same distance in the open
+  let wall = null, open = null;
+  search: for (const b of buildings) {   // stand just outside one side of a building and listen to a source just outside the other side
+    const c = qCenter(b.foot), xs = b.foot.map(p => p[0]), ys = b.foot.map(p => p[1]), hx = (Math.max(...xs) - Math.min(...xs)) / 2 + 2.5, hy = (Math.max(...ys) - Math.min(...ys)) / 2 + 2.5;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      const a = [c[0] - dx * hx, c[1] - dy * hy], z = [c[0] + dx * hx, c[1] + dy * hy];
+      if (navAt(a[0], a[1]) || navAt(z[0], z[1]) || Math.hypot(z[0] - a[0], z[1] - a[1]) < 10) continue;
+      me.x = a[0]; me.y = a[1]; const sp = spatial(z[0], z[1], 'hawker_tea_1');
+      if (sp.lp) { wall = { lp: sp.lp, g: sp.g, d: Math.hypot(z[0] - a[0], z[1] - a[1]) };
+        for (let k = 0; k < 16 && !open; k++) { const x = a[0] + Math.cos(k) * wall.d, y = a[1] + Math.sin(k) * wall.d, o = spatial(x, y, 'hawker_tea_1'); if (!o.lp && o.g > 0) open = { g: o.g, d: wall.d }; }
+        if (open) break search; wall = null; }
+    }
+  }
+  out.wall = wall; out.open = open;
+  // ambient levels: busy roundabout against a corner of the map
+  const busy = nearestFree(0, -60, 60); me.x = busy[0]; me.y = busy[1]; const hi = nearbyLevels();
+  const far = nearestFree(-420, -420, 30); me.x = far[0]; me.y = far[1]; const lo = nearbyLevels();
+  out.levels = { hi, lo };
+  return out;
+});
+console.log(`Audio: pan right ${audio.pan[0].toFixed(2)} / left ${audio.pan[1].toFixed(2)}; voice 10 m ${audio.voice[0].toFixed(2)}, 50 m ${audio.voice[1].toFixed(2)}; horn 100 m ${audio.horn[0].toFixed(2)}, 140 m ${audio.horn[1].toFixed(2)}; zoom ${audio.zoomSame ? 'ignored' : 'MATTERS'}, camera ${audio.cameraIgnored ? 'ignored' : 'MATTERS'}; behind a building ${audio.wall ? 'lowpass ' + audio.wall.lp.toFixed(0) + ' Hz' : 'not found'}; ambience busy ${audio.levels.hi.traffic.toFixed(2)}/${audio.levels.hi.crowd.toFixed(2)} vs remote ${audio.levels.lo.traffic.toFixed(2)}/${audio.levels.lo.crowd.toFixed(2)}`);
+if (!(audio.pan[0] > .5 && audio.pan[1] < -.5)) errors.push('sounds on the right/left should pan right/left: ' + JSON.stringify(audio.pan));
+if (!(audio.voice[0] > .5 && audio.voice[1] === 0)) errors.push('a voice should carry about 40 m: ' + JSON.stringify(audio.voice));
+if (!(audio.horn[0] > 0 && audio.horn[1] === 0)) errors.push('a horn should carry about 120 m: ' + JSON.stringify(audio.horn));
+if (!audio.zoomSame || !audio.cameraIgnored) errors.push('loudness must not depend on zoom or on where the camera is');
+if (!(audio.drift[0] > 20 && audio.drift[0] <= 100.01 && audio.drift[1] < .01)) errors.push('zoomed out and detached, the listener may drift up to half way to the camera, never when zoomed in: ' + JSON.stringify(audio.drift));
+if (!audio.wall || !audio.open || !(audio.wall.g < audio.open.g * 1.001) || !(audio.wall.lp < 5000)) errors.push('sound behind a building should be duller: ' + JSON.stringify({ wall: audio.wall, open: audio.open }));
+if (!(audio.levels.hi.traffic > audio.levels.lo.traffic + .2) || !(audio.levels.hi.crowd > audio.levels.lo.crowd + .1)) errors.push('ambient traffic/crowd should be louder in the busy centre than in a remote corner: ' + JSON.stringify(audio.levels));
+await page.evaluate(() => { window.__journey.cam.zoom = window.__journey.cam.tz; });
 // plazas, campuses and the station hall are walkable now; the pond, tracks and columns are not
 const plazas = await page.evaluate(() => {
   const { sites, FW, navAt, nearestFree, findPath } = window.__journey, out = { free: {} };
