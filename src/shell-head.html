@@ -61,8 +61,12 @@ button{font:inherit;font-size:13.5px;color:var(--graphite);background:transparen
 button:hover{background:rgba(184,67,47,.09)}
 button[aria-pressed=true]{background:rgba(63,95,138,.14);border-color:var(--pencil-blue)}
 button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outline-offset:2px}
-#soundFab{position:fixed;right:118px;top:calc(12px + env(safe-area-inset-top,0px));z-index:6;display:none;background:var(--paper-note)}
-#toolsToggle{position:fixed;right:14px;top:calc(12px + env(safe-area-inset-top,0px));z-index:6;display:none;background:var(--paper-note)}
+#soundFab{position:fixed;right:104px;top:calc(12px + env(safe-area-inset-top,0px));z-index:6;display:block;background:var(--paper-note)}
+#toolsToggle{position:fixed;right:14px;top:calc(12px + env(safe-area-inset-top,0px));z-index:6;background:var(--paper-note)}
+.tools{display:none;top:calc(56px + env(safe-area-inset-top,0px))!important}.tools.open{display:flex}
+.tools .facing{margin:-2px 0 0;font-size:12px;text-align:center;color:var(--graphite-soft)}
+.title{transition:opacity .8s}.title.gone{opacity:0;pointer-events:none}
+body.inside #toolsToggle,body.inside .tools{display:none!important}
 .card{left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(320px,calc(100vw - 28px));transform:rotate(-.5deg)}
 .card h2{margin:0;font-size:20px;font-weight:700;line-height:1.1}
 .card h2 .bn{font-family:var(--f-bn);font-weight:600;color:var(--lead-red);margin-right:6px}
@@ -94,6 +98,7 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 #loading.done{opacity:0}
 #btnEnter{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--paper-note);font-size:15px;padding:7px 16px;box-shadow:2px 3px 0 rgba(47,45,42,.12);max-width:calc(100vw - 28px)}
 #btnEnter:disabled{opacity:.75;cursor:default}
+#btnGo{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--paper-note);font-size:15px;padding:7px 14px;box-shadow:2px 3px 0 rgba(47,45,42,.12)}
 #btnAct{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(122px + env(safe-area-inset-bottom,0px));z-index:6;background:var(--paper-note);font-size:15px;padding:7px 16px;box-shadow:2px 3px 0 rgba(47,45,42,.12);max-width:calc(100vw - 28px)}
 .act{box-sizing:border-box;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) rotate(-.3deg);width:min(600px,calc(100vw - 28px));max-height:54vh;overflow:auto;z-index:7}
 .act h2{margin:0;font-size:20px;font-weight:700;line-height:1.1}
@@ -103,6 +108,10 @@ button:focus-visible,input:focus-visible{outline:2px dashed var(--lead-red);outl
 @media (max-width:900px){body.acting .card{display:none}}
 #inside{position:fixed;inset:0;z-index:4;background:var(--paper)}
 #room{position:absolute;inset:0;width:100%;height:100%;display:block}
+#station{position:fixed;inset:0;z-index:4;background:var(--paper)}
+#stationCv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#stMenu{max-height:32vh}
+@media (max-width:640px){#stMenu{max-height:36vh;padding:8px 10px}#stMenu .dishes{grid-template-columns:1fr 1fr;gap:4px}#stMenu .dish{padding:3px 6px;font-size:13px}#stMenu .sub{font-size:12px}}
 body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display:none!important}
 .menu{box-sizing:border-box;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) rotate(-.3deg);width:min(660px,calc(100vw - 28px));max-height:44vh;overflow:auto}
 .menu h2{margin:0;font-size:20px;font-weight:700;line-height:1.1}
@@ -150,7 +159,7 @@ body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display
 </section>
 </div>
 
-<button id="toolsToggle" aria-controls="tools" aria-expanded="false">Controls</button>
+<button id="toolsToggle" aria-controls="tools" aria-expanded="false">☰ Settings</button>
 <button id="soundFab" aria-pressed="true" aria-label="Turn sound off">Sound: on</button>
 <aside class="note tools" id="tools" aria-label="Scene controls">
   <label for="timeSlider">Time <input id="timeSlider" type="range" min="0" max="23.99" step="0.05" value="8.5"></label>
@@ -163,32 +172,27 @@ body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display
     <button id="btnFriday" aria-pressed="false">Weekend: off</button>
   </div>
   <div class="row">
-    <button id="btnSound" aria-pressed="true">Sound: on</button>
-    <button id="btnVoices">Voices 0</button>
+    <button id="btnRotL" aria-label="Turn the view left">⟲ Turn</button>
+    <button id="btnRotR" aria-label="Turn the view right">Turn ⟳</button>
   </div>
-  <div class="row">
-    <button id="btnRotL" aria-label="Turn the view left">⟲ Turn left</button>
-    <button id="btnRotR" aria-label="Turn the view right">Turn right ⟳</button>
-  </div>
+  <p id="facing" class="facing">Looking north</p>
   <div class="row">
     <button id="btnAngle">Angle: bird's-eye</button>
-    <span id="facing" style="font-size:13px;align-self:center;text-align:center">Looking north</span>
-  </div>
-  <div class="row">
     <button id="btnBld">Buildings: full</button>
-    <span style="font-size:12px;align-self:center;text-align:center;color:var(--graphite-soft)">B key cycles</span>
   </div>
   <div class="row">
     <button id="btnLang">Speech: বাংলা</button>
-    <button id="btnFollow">Follow someone</button>
+    <button id="btnVoices">Voices 0</button>
   </div>
   <div class="row">
     <button id="btnMe">Find me (F)</button>
-    <span style="font-size:12px;align-self:center;text-align:center;color:var(--graphite-soft)">Shift to run</span>
+    <button id="btnFollow">Follow someone</button>
   </div>
+  <button id="btnSound" aria-pressed="true" hidden>Sound: on</button>
 </aside>
 
 <button id="btnEnter" hidden></button>
+<button id="btnGo" hidden>যাতায়াত · Travel</button>
 <button id="btnAct" hidden></button>
 
 <section class="note act" id="act" hidden aria-live="polite">
@@ -206,6 +210,16 @@ body.inside .zoom,body.inside #mini,body.inside .card,body.inside .title{display
     <p class="sub" id="menuSub"></p>
     <div class="dishes" id="dishes"></div>
     <button id="btnLeave">Leave (Esc)</button>
+  </div>
+</section>
+
+<section id="station" hidden aria-label="Inside Kamalapur Railway Station">
+  <canvas id="stationCv" aria-label="A 360-degree pencil panorama of Kamalapur station: the shell roof on its columns, the departure board, ticket counters, platforms with trains, and the forecourt full of rickshaws and CNGs. Drag or use the arrow keys to look around."></canvas>
+  <div class="note menu" id="stMenu">
+    <h2 id="stTitle"></h2>
+    <p class="sub" id="stSub"></p>
+    <div class="dishes" id="stActs"></div>
+    <button id="btnStLeave">Leave (Esc)</button>
   </div>
 </section>
 

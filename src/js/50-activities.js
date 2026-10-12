@@ -59,7 +59,7 @@ function openStall(st){
 function shopView(st,note){
   const items=SNACKS[st.type],busy=simT<(me.busyUntil||0);
   actView(`<span class="bn">${st.name?st.name[0]:st.def.bn}</span>${st.name?st.name[1]:st.def.en}`,L2('কী নেবেন? দাম টাকায়, পাশে শক্তি।','What will you have? Price in taka, then the energy.'),note||L2('আসুন ভাই, কী দেব?','Come, bhai, what shall I give you?'),
-    items.map((m,i)=>actBtn(`<span class="bn">${m.bn}</span> <small>${m.en}</small>`,m.how==='read'?`৳${m.price}`:`৳${m.price}<small> +${m.gain}</small>`,()=>buySnack(st,m),busy||STAT.wallet<m.price||(m.gain>0&&STAT.energy>=97),busy?L2('খাচ্ছেন…','Eating…'):STAT.wallet<m.price?L2('টাকা কম','Not enough taka'):L2('এখন খিদে নেই','Not hungry'))).concat([actBtn(L2('থাক, যাই','No thanks'),'',closeAct)]))}
+    items.map((m,i)=>actBtn(`<span class="bn">${m.bn}</span> <small>${m.en}</small>`,m.how==='read'?`৳${m.price}`:`৳${m.price}<small> +${m.gain}</small>`,()=>buySnack(st,m),busy||STAT.wallet<m.price,busy?L2('খাচ্ছেন…','Eating…'):L2('টাকা কম','Not enough taka'))).concat([actBtn(L2('থাক, যাই','No thanks'),'',closeAct)]))}
 function buySnack(st,m){
   if(STAT.wallet<m.price)return;addMoney(-m.price);const t=m.how==='read'?3:2.2;me.act=m.how==='read'?'carry':m.how;me.actT=simT+t;me.busyUntil=simT+t;me.spd=0;me.path=null;
   const head=m.how==='read'?mpick(HEADLINES):null;

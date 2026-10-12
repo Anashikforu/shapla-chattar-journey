@@ -3,7 +3,7 @@ const walks=[];
 function addWalk(pts,side,sw,road,closed=false){const P=mkPoly(pts);Object.assign(P,{side,sw,road,closed,id:walks.length,links:[[],[]],stalls:[],sib:-1,exits:[]});walks.push(P);return P}
 function walkPos(P,s,lat,o){if(P.closed)s=((s%P.len)+P.len)%P.len;const r=polyAt(P,s),k=P.side===0?1:-P.side;o[0]=r.x+r.ty*k*lat;o[1]=r.y-r.tx*k*lat;o[2]=r.tx;o[3]=r.ty;return o}
 function genWalks(){
-  for(const R of roads){if(R.kind==='lane'){addWalk(R.pts.filter(p=>inWorld(p[0],p[1],20)),0,R.hw*2,R.id);continue}
+  for(const R of roads){if(R.kind==='lane'||R.kind==='gali'){addWalk(R.pts.filter(p=>inWorld(p[0],p[1],20)),0,R.hw*2,R.id);continue}
     const ids={};for(const side of[-1,1]){const off=offsetPts(R.pts,side*(R.hw+R.sw/2));let run=[];const flush=()=>{if(run.length>3){const w=addWalk(run,side,R.sw,R.id);(ids[side]=ids[side]||[]).push(w)}run=[]};
       for(const p of off){if(inWorld(p[0],p[1],15)&&Math.hypot(p[0],p[1])>RSW+.5)run.push(p);else flush()}flush()}
     for(const a of ids[-1]||[])for(const b of ids[1]||[]){if(a.sib<0)a.sib=b.id;if(b.sib<0)b.sib=a.id}}

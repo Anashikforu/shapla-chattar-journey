@@ -38,15 +38,17 @@ function drawPerson0(c,p,x,y,lod,extra){
   else if(L.dress==='sari')poly([[-.16,wv],[.16,wv],[.24,.02],[-.24,.02]],L.c1);
   else if(L.dress==='borka')poly([[-.18,sh+.02],[.18,sh+.02],[.26,.02],[-.26,.02]],L.c1);
   if(L.dress==='lungi'&&lod>2&&pose!=='sit'&&pose!=='squat'){line([[-.18,.42],[.18,.42]],shade(L.c2,.6),.025);line([[-.18,.3],[.19,.3]],shade(L.c2,.6),.025);line([[0,wv],[.02,.2]],shade(L.c2,.6),.025)}
-  if(L.dress==='sari'&&pose!=='sit'&&pose!=='squat')line([[-.24,.05],[.24,.05]],L.c2,.06);
+  if(L.dress==='sari'&&pose!=='sit'&&pose!=='squat')line([[-.24,.05],[.24,.05]],L.c3,.07);   // the paar, the sari's border
   // torso
   const topEnd=L.dress==='panjabi'||L.dress==='salwar'?(pose==='sit'||pose==='squat'?hip[1]+up*0:.3):wv;
   const tc=L.dress==='sari'?L.c2:L.dress==='borka'?L.c1:L.c1;
-  poly([[-.19+ls,sh],[.19+ls,sh],[.16,Math.min(wv,topEnd+ (pose==='sit'?.2:0))],[-.16,Math.min(wv,topEnd+(pose==='sit'?.2:0))]].map((v,i)=>v),tc);
+  {const bw=L.female?.13:.155,bot=Math.min(wv,topEnd+(pose==='sit'?.2:0));   // a torso with sloping shoulders and a waist, not a box
+    poly([[-.12+ls,sh+.035],[.12+ls,sh+.035],[.19+ls,sh-.02],[.18+ls,sh-.1],[bw,(sh+bot)/2],[bw+.01,bot],[-bw-.01,bot],[-bw,(sh+bot)/2],[-.18+ls,sh-.1],[-.19+ls,sh-.02]],tc)}
+  if(lod>1&&!L.headCover)line([[.02+ls,sh+.02],[.02+ls,sh+.07]],L.skin,.07);   // the neck
   if(L.dress==='panjabi'&&pose!=='sit')poly([[-.17,wv],[.17,wv],[.19,.3],[-.19,.3]],L.c1);
   if(L.dress==='salwar'&&pose!=='sit')poly([[-.17,wv],[.17,wv],[.2,.32],[-.2,.32]],L.c1);
-  if(L.dress==='sari')poly([[.16,wv],[.2+ls,sh],[.06+ls,sh],[-.16,wv-.06]],L.c1);
-  if(L.dress==='salwar')line([[-.18+ls,sh-.04],[.18+ls,sh-.1]],L.c2,.07);
+  if(L.dress==='sari'){poly([[.16,wv],[.2+ls,sh],[.06+ls,sh],[-.16,wv-.06]],L.c1);if(lod>1)line([[.2+ls,sh],[.16,wv]],L.c3,.04)}   // the achol across the body, its border showing
+  if(L.dress==='salwar'){line([[-.18+ls,sh-.04],[.18+ls,sh-.1]],L.c2,.08);if(pose!=='sit')line([[-.17+ls,sh-.05],[-.22,wv-.05]],L.c2,.06)}   // the orna over both shoulders, one end hanging behind
   if(L.tie)line([[.02+ls,sh-.02],[.02,wv+.02]],'#7b1f2e',.04);
   if(p.vest){poly([[-.18+ls,sh-.02],[.18+ls,sh-.02],[.15,wv+.02],[-.15,wv+.02]],'#c8e63c');line([[-.16,(sh+wv)/2],[.17+ls,(sh+wv)/2]],'#f39c12',.05);line([[-.16,(sh+wv)/2-.1],[.16+ls,(sh+wv)/2-.1]],'#f39c12',.05)}
   if(p.jersey){for(let k=-2;k<=2;k++)line([[k*.07+ls,sh-.02],[k*.06,wv+.02]],p.jersey,.03)}
@@ -81,6 +83,7 @@ function drawPerson0(c,p,x,y,lod,extra){
   const elbow=(s,h)=>[(s[0]+h[0])/2+(h[1]>s[1]?.06:0),(s[1]+h[1])/2-.02];
   line([shL,elbow(shL,hL),hL],sleeve,.085);line([shR,elbow(shR,hR),hR],sleeve,.085);
   c.fillStyle=L.skin;for(const h of[hL,hR]){const a=q(h[0],h[1]);c.beginPath();circ(c,a[0],a[1],.05);c.fill()}
+  if(L.bangles&&lod>1){const e=elbow(shL,hL),a=q(hL[0]*.8+e[0]*.2,hL[1]*.8+e[1]*.2);c.fillStyle=L.bangles;c.fillRect(a[0]-.05,a[1]-.03,.1,.05)}
   // held things
   if(act==='phone'){const a=q(hR[0]+.02,hR[1]);c.fillStyle='#222';c.fillRect(a[0]-.03,a[1]-.09,.07,.14)}
   if(act==='smoke'){const a=q(hR[0]+.05,hR[1]);c.strokeStyle='#f4f1ea';LW(.035);c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(a[0]+.12,a[1]-.02);c.stroke();c.fillStyle='#e0572a';c.fillRect(a[0]+.11,a[1]-.035,.03,.03);c.strokeStyle=INK2;c.globalAlpha=.45;LW(.02);c.beginPath();const tt=(simT*.8)%1;c.moveTo(a[0]+.13,a[1]-.05);c.quadraticCurveTo(a[0]+.25,a[1]-.25-tt*.2,a[0]+.15,a[1]-.45-tt*.3);c.stroke();c.globalAlpha=1}
@@ -95,14 +98,25 @@ function drawPerson0(c,p,x,y,lod,extra){
   const hc=q(.02+ls,.93+up),hr=.12;
   if(L.headCover){c.fillStyle=L.dress==='borka'?L.c1:L.c2;c.beginPath();circ(c,hc[0],hc[1]+.01,hr*1.25);c.fill();const s1=q(-.22+ls,sh-.04),s2=q(.22+ls,sh-.04);c.beginPath();c.moveTo(hc[0]-hr*1.2,hc[1]);c.lineTo(s1[0],s1[1]);c.lineTo(s2[0],s2[1]);c.lineTo(hc[0]+hr*1.2,hc[1]);c.fill()}
   c.fillStyle=L.skin;c.beginPath();circ(c,hc[0],hc[1]+(L.headCover?.02:0),L.headCover?hr*.78:hr);c.fill();
-  if(!L.headCover){c.fillStyle=L.hair;c.beginPath();c.arc(hc[0],hc[1],hr*1.02,Math.PI*1.02,TAU*.99);c.fill();if(L.female){c.beginPath();circ(c,hc[0]-fc*hr*.9,hc[1]+.02,hr*.45);c.fill()}}
-  if(L.beard&&!L.female){c.fillStyle='#2a2420';c.beginPath();c.arc(hc[0]+fc*.02,hc[1]+.04,hr*.72,.15*Math.PI,.85*Math.PI);c.fill()}
+  if(!L.headCover){c.fillStyle=L.hair;c.beginPath();c.arc(hc[0],hc[1],hr*1.02,Math.PI*1.02,TAU*.99);c.fill();
+    if(L.female){if(L.bun){c.beginPath();circ(c,hc[0]-fc*hr*.95,hc[1]-.01,hr*.5);c.fill()}else{c.beginPath();c.moveTo(hc[0]-fc*hr*.7,hc[1]);c.quadraticCurveTo(hc[0]-fc*hr*1.25,hc[1]+.2,hc[0]-fc*hr*.95,hc[1]+.42);c.lineTo(hc[0]-fc*hr*.65,hc[1]+.4);c.quadraticCurveTo(hc[0]-fc*hr*.9,hc[1]+.18,hc[0]-fc*hr*.35,hc[1]);c.fill()}}   // khopa (bun) or beni (braid)
+    else{c.beginPath();c.arc(hc[0]-fc*hr*.35,hc[1]-.01,hr*.75,Math.PI*.9,Math.PI*1.6);c.fill()}}
+  if(L.beard&&!L.female){c.fillStyle=L.henna?'#b5522a':L.old?'#c9c4bb':'#231d18';c.beginPath();c.arc(hc[0]+fc*.02,hc[1]+.04,hr*.72,.15*Math.PI,.85*Math.PI);c.fill()}
   if(L.cap&&!L.female){c.fillStyle='#f4f1ea';c.beginPath();c.arc(hc[0],hc[1]-.02,hr*1.02,Math.PI,TAU);c.fill()}
   if(L.gamchha){c.strokeStyle='#c0392b';LW(.06);c.beginPath();c.moveTo(hc[0]-hr,hc[1]-.03);c.lineTo(hc[0]+hr,hc[1]-.06);c.stroke();if(p.sleepFace){c.fillStyle='#c0392b';c.globalAlpha=.85;c.beginPath();circ(c,hc[0],hc[1],hr*.95);c.fill();c.globalAlpha=1}}
   if(p.helmet){c.fillStyle=p.helmet;c.beginPath();c.arc(hc[0],hc[1]+.01,hr*1.25,Math.PI*.95,TAU*1.01);c.fill()}
   if(p.guardCap||p.role==='police'){c.fillStyle=p.role==='police'?'#2f3a4d':'#3f4a33';c.fillRect(hc[0]-hr*1.1,hc[1]-hr*1.25,hr*2.2,hr*.7);c.fillRect(hc[0]+(fc>0?0:-hr*1.5),hc[1]-hr*.62,hr*1.5,hr*.18)}
   c.strokeStyle=INK;c.globalAlpha=.6;LW(.8/S);c.beginPath();circ(c,hc[0],hc[1],hr*(L.headCover?1.25:1));c.stroke();c.globalAlpha=1;
-  if(lod>2&&!p.sleepFace){c.fillStyle=INK;c.beginPath();circ(c,hc[0]+fc*.05,hc[1]+.0,.014);c.fill()}
+  if(lod>2&&!p.sleepFace){const fy=hc[1]+(L.headCover?.02:0),fx=hc[0],F=fc;   // a face in profile: brow, almond eye, nose, mouth; a moustache, nose pin, bindi, earring
+    c.fillStyle=L.skin;c.beginPath();c.moveTo(fx+F*hr*.86,fy-.025);c.lineTo(fx+F*hr*1.16,fy+.03);c.lineTo(fx+F*hr*.86,fy+.045);c.fill();
+    c.strokeStyle=INK;c.globalAlpha=.55;LW(.6/S);c.beginPath();c.moveTo(fx+F*hr*.86,fy-.025);c.lineTo(fx+F*hr*1.16,fy+.03);c.lineTo(fx+F*hr*.88,fy+.045);c.stroke();c.globalAlpha=1;
+    c.fillStyle=INK;c.beginPath();c.ellipse(fx+F*.055,fy-.005,.018,.01,0,0,TAU);c.fill();
+    c.strokeStyle=L.old&&!L.female?'#8a8580':'#1d1814';LW(.012);c.beginPath();c.moveTo(fx+F*.03,fy-.032);c.lineTo(fx+F*.085,fy-.036);c.stroke();
+    c.strokeStyle=shade(L.skin,.6);LW(.012);c.beginPath();c.moveTo(fx+F*.07,fy+.07);c.lineTo(fx+F*.1,fy+.068);c.stroke();
+    if(L.mous&&!L.female){c.strokeStyle=L.henna?'#b5522a':L.old?'#c9c4bb':'#1d1814';LW(.022);c.beginPath();c.moveTo(fx+F*.06,fy+.055);c.lineTo(fx+F*.115,fy+.05);c.stroke()}
+    if(L.nosePin){c.fillStyle='#f2c94c';c.beginPath();circ(c,fx+F*hr*1.0,fy+.035,.011);c.fill()}
+    if(L.bindi){c.fillStyle='#c0392b';c.beginPath();circ(c,fx+F*hr*.82,fy-.05,.012);c.fill()}
+    if(L.female&&!L.headCover){c.fillStyle='#f2c94c';c.beginPath();circ(c,fx-F*.01,fy+.045,.012);c.fill()}}
   if(umb){const a=q(hL[0],hL[1]),top=q(.05+ls,1.2+up);c.strokeStyle=INK;LW(.02);c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(top[0],top[1]);c.stroke();c.fillStyle=L.umbCol;c.beginPath();c.moveTo(top[0]-.62,top[1]+.12);c.quadraticCurveTo(top[0],top[1]-.42,top[0]+.62,top[1]+.12);c.closePath();c.fill();c.strokeStyle=INK;c.globalAlpha=.6;LW(.8/S);c.stroke();c.globalAlpha=1}
   if(p.roam==='badam'){c.fillStyle='#a0763a';c.beginPath();c.ellipse(hc[0],hc[1]-hr*1.3,.32,.1,0,0,TAU);c.fill()}
   if(p.roam==='water'){const a=q(hL[0],hL[1]);c.fillStyle='rgba(120,170,210,.8)';c.fillRect(a[0]-.1,a[1]-.05,.2,.25)}

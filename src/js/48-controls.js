@@ -16,6 +16,9 @@ $('btnSound').onclick=()=>{soundPref=!A.on;audioInit();if(A.ctx.state==='suspend
 const LANGS=[['bn','Speech: বাংলা'],['en','Speech: English'],['both','Speech: both']];
 $('btnLang').onclick=()=>{const i=(LANGS.findIndex(l=>l[0]===LANG)+1)%3;LANG=LANGS[i][0];$('btnLang').textContent=LANGS[i][1];updateCard()};
 $('toolsToggle').onclick=()=>{const t=$('tools');t.classList.toggle('open');$('toolsToggle').setAttribute('aria-expanded',t.classList.contains('open'))};
+/* a clean screen for showing the city: the title card bows out after a few seconds, and the settings stay folded until asked for */
+setTimeout(()=>{const t=document.querySelector('.title');if(t){t.classList.add('gone');setTimeout(()=>{t.style.display='none'},900)}},7000);
+cv.addEventListener('pointerdown',()=>{const t=$('tools');if(t.classList.contains('open')){t.classList.remove('open');$('toolsToggle').setAttribute('aria-expanded','false')}});
 $('btnVoices').onclick=()=>{updateVoiceUI();$('voicePanel').hidden=false};
 $('closePanel').onclick=()=>{$('voicePanel').hidden=true};
 $('pickFiles').onclick=()=>$('voiceFiles').click();

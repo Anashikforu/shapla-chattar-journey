@@ -16,12 +16,17 @@ const ROLES={
 };
 let PID=1;
 function makeLook(role,female){
-  const L={female,skin:mpick(SKIN),h:(female?1.54:1.67)*mr(.95,1.05),hair:'#1f1b18'};
+  const old=role!=='kid'&&role!=='student'&&Math.random()<.16;
+  const L={female,old,skin:mpick(SKIN),h:(female?1.52:1.65)*mr(.95,1.05),hair:old?mpick(['#8a8580','#b5b0a8','#5a5550']):'#17130f',c3:mpick(BORDER)};
   if(role==='kid')L.h=1.15;
-  if(female){L.dress=role==='garment'||Math.random()<.42?'sari':Math.random()<.65?'salwar':'borka';L.c1=mpick(SARI);L.c2=mpick(SARI);L.headCover=L.dress==='borka'||Math.random()<.45;if(L.dress==='borka')L.c1=mpick(['#1c1c28','#2a2a3a','#3a2a2a'])}
-  else{const poor=['labour','hawker','puller','kid','roam','helper'].includes(role);L.dress=poor?(Math.random()<.65?'lungi':'pants'):(Math.random()<.12?'panjabi':'pants');
-    L.c1=L.dress==='panjabi'?mpick(['#f1eee6','#e8e2cf','#dfe7ee']):mpick(SHIRT);L.c2=L.dress==='lungi'?mpick(LUNGI):mpick(PANTS);
-    L.cap=L.dress==='panjabi'||Math.random()<.08;L.beard=Math.random()<.25;L.tie=(role==='banker'||role==='office')&&Math.random()<.35;L.gamchha=role==='puller'||(role==='labour'&&Math.random()<.5)}
+  if(female){L.dress=role==='garment'||old||Math.random()<.42?'sari':Math.random()<.65?'salwar':'borka';L.c1=mpick(SARI);L.c2=mpick(SARI);
+    L.headCover=L.dress==='borka'||(L.dress==='sari'&&(old||Math.random()<.45))||(L.dress==='salwar'&&Math.random()<.35);   // the sari's achol over the head, a hijab or orna
+    if(L.dress==='borka'){L.c1=mpick(['#1c1c28','#2a2a3a','#3a2a2a','#2f3a2f']);L.c2=mpick(['#1c1c28',mpick(SARI),'#6b3f5a','#2f4f6b'])}
+    L.bun=Math.random()<.55;L.nosePin=L.dress!=='borka'&&Math.random()<.4;L.bindi=!L.headCover&&L.dress!=='borka'&&Math.random()<.07;L.bangles=Math.random()<.6?mpick(['#c0392b','#e8b923','#1565c0','#2e7d32','#ad1457']):null}
+  else{const poor=['labour','hawker','puller','kid','roam','helper'].includes(role);L.dress=poor?(Math.random()<.65?'lungi':'pants'):(old&&Math.random()<.5||Math.random()<.12?'panjabi':'pants');
+    L.c1=L.dress==='panjabi'?mpick(['#f1eee6','#e8e2cf','#dfe7ee','#d6e2cf']):mpick(SHIRT);L.c2=L.dress==='lungi'?mpick(LUNGI):L.dress==='panjabi'?'#efece4':mpick(PANTS);
+    L.cap=L.dress==='panjabi'&&Math.random()<.7||Math.random()<.06;L.beard=old?Math.random()<.7:Math.random()<.22;L.henna=L.beard&&old&&Math.random()<.4;   // older men often dye the beard with mehendi
+    L.mous=!L.beard&&Math.random()<.4||L.beard&&Math.random()<.3;L.tie=(role==='banker'||role==='office')&&Math.random()<.35;L.gamchha=role==='puller'||(role==='labour'&&Math.random()<.5)}
   L.bag=['office','student','banker','customer'].includes(role)&&Math.random()<.55;L.umbCol=mpick(UMB);L.hasUmb=Math.random()<.7;
   return L;
 }
@@ -35,6 +40,7 @@ function makePerson(role,female){
 }
 const VT={
  rickshaw:{len:2.5,wid:1.15,v:[3.2,4.4],acc:1.2,bn:'রিকশা',en:'Cycle rickshaw'},
+ auto:{len:2.6,wid:1.15,v:[4.8,6.5],acc:1.8,bn:'অটোরিকশা',en:'Battery auto-rickshaw'},   // the battery rickshaws that now fill Dhaka's roads
  cng:{len:2.8,wid:1.4,v:[7,10],acc:2.5,bn:'সিএনজি',en:'CNG auto-rickshaw'},
  car:{len:4.4,wid:1.8,v:[8,12],acc:3,bn:'প্রাইভেট কার',en:'Private car'},
  bus:{len:10,wid:2.5,v:[6,9],acc:1.4,bn:'লোকাল বাস',en:'Local bus'},
@@ -54,7 +60,7 @@ function mkVehicle(type,route){
   if(type==='bike')v.col=mpick(['#b71c1c','#222','#1f3a6b']);
   if(type==='bus'){const l=mpick(BUS_LIVERY);v.col=l[0];v.col2=l[1];v.brt=mpick(BUS_ROUTES)}
   if(type==='dd'){v.col='#c0392b';v.col2='#f2f2ea';v.brt=['বিআরটিসি','BRTC','helper_gulistan_1']}
-  if(type==='rickshaw'){v.puller=makePerson('puller',false);v.hood=mpick(HOOD);v.art=[mpick(SARI),mpick(SARI),mpick(['#f9a825','#2e7d32','#1565c0'])];v.pax=[];if(Math.random()<.6){v.pax.push(makePerson(mpick(['office','customer','student','garment'])));if(Math.random()<.3)v.pax.push(makePerson('customer'))}v.fare=[40,50,60,70,80][Math.random()*5|0];v.hoodUp=Math.random()<.35}
+  if(type==='rickshaw'||type==='auto'){v.puller=makePerson('puller',false);v.hood=type==='auto'?mpick(['#1f6fb2','#2e8b57','#c0392b','#e0a526','#6b3f8a']):mpick(HOOD);v.art=[mpick(SARI),mpick(SARI),mpick(['#f9a825','#2e7d32','#1565c0'])];v.pax=[];if(Math.random()<.6){v.pax.push(makePerson(mpick(['office','customer','student','garment'])));if(Math.random()<.3)v.pax.push(makePerson('customer'))}v.fare=[40,50,60,70,80][Math.random()*5|0];v.hoodUp=Math.random()<(HOUR>11&&HOUR<16?.6:.3)||v.pax.some(p=>p.look&&p.look.female)&&Math.random()<.7;if(type==='auto'){v.hoodUp=Math.random()<.85;v.fare=[30,40,50,60][Math.random()*4|0]}}
   if(type==='bus'||type==='dd'){v.helper=makePerson('helper',false);v.helper.look.dress='pants';v.driverName=mpick(MALE);v.paxN=20+(Math.random()*40|0)}
   if(type==='bike'){v.rider=makePerson(mpick(['office','courier','student']),false);v.rider.helmet=mpick(['#b71c1c','#222','#e0a526','#1f3a6b']);v.pillion=Math.random()<.35?makePerson('customer'):null}
   if(type==='car'||type==='cng'||type==='leguna'){v.driverName=mpick(MALE);v.home=mpick(HOME)}

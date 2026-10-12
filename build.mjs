@@ -2,7 +2,9 @@
 // `node build.mjs [out] [--hooks]`: --hooks adds the test handle (src/hooks/test-hooks.js); the shipped index.html never has it.
 import fs from 'node:fs';
 const args = process.argv.slice(2), hooks = args.includes('--hooks'), out = args.find(a => !a.startsWith('--')) || 'index.html';
-const files = fs.readdirSync('src/js').filter(f => f.endsWith('.js')).sort();
+// PANO_KEEP=51-pano-bank.js,51-pano-x.js builds with only those scene files (so one scene can be tried while others are half-written)
+const keep = process.env.PANO_KEEP ? process.env.PANO_KEEP.split(',') : null;
+const files = fs.readdirSync('src/js').filter(f => f.endsWith('.js') && (!keep || !f.startsWith('51-pano-') || keep.includes(f))).sort();
 const js = files.map(f => fs.readFileSync(`src/js/${f}`, 'utf8')).join('') + (hooks ? fs.readFileSync('src/hooks/test-hooks.js', 'utf8') : '');
 const html = fs.readFileSync('src/shell-head.html', 'utf8') + js + fs.readFileSync('src/shell-tail.html', 'utf8');
 fs.writeFileSync(out, html);

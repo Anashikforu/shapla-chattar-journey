@@ -102,6 +102,7 @@ function nearResto(){let best=null,bd=1e9;for(const R of RESTOS){const d=Math.hy
 function restoState(){if(INSIDE){return 0}NEAR=nearResto();if(!NEAR)return 0;return restoOpen(NEAR)?1:2}
 let enterLabel='';
 function syncEnterBtn(){const rs=restoState(),b=$('btnEnter');
+  const pn=panoNear();if(pn){const n=pn.P.name,t=L2(`ঢুকুন: ${n[0]} (Enter)`,`Enter ${n[1]} (Enter)`);if(t!==enterLabel){enterLabel=t;b.textContent=t}b.disabled=false;if(b.hidden)b.hidden=false;return}
   if(!rs){if(!b.hidden)b.hidden=true;return}
   const R=NEAR,n=L2(R.name[0],R.name[1]),h=R.hours?R.hours[0]:6;
   const t=rs===1?L2(`ঢুকুন: ${R.name[0]} (Enter)`,`Enter ${R.name[1]} (Enter)`):L2(`${R.name[0]} এখন বন্ধ`,`${R.name[1]} is closed${R.hours?`, opens at ${h>12?h-12:h} ${h>=12?'PM':'AM'}`:', opens at 6 AM'}`);
@@ -124,12 +125,12 @@ function enterRestaurant(){
   hideCard();document.body.classList.add('inside');$('inside').hidden=false;$('btnEnter').hidden=true;buildMenu();roomEnter(CUR);
   if(CUR.tier===1)playVoice('hotel_welcome_1',me.x,me.y,1)}
 function leaveRestaurant(){
-  if(!INSIDE||eating.dish)return;INSIDE=false;simT=simT0;document.body.classList.remove('inside');$('inside').hidden=true;heldKeys.clear();syncEnterBtn()}
+  if(!INSIDE||PANO_ON||eating.dish)return;INSIDE=false;simT=simT0;document.body.classList.remove('inside');$('inside').hidden=true;heldKeys.clear();syncEnterBtn()}
 function buildMenu(){
   $('menuTitle').innerHTML=`<span class="bn">${CUR.name[0]}</span>${CUR.name[1]}<small class="tier">${CUR.tier===3?L2('দামি রেস্তোরাঁ','Fine dining'):CUR.tier===2?L2('ভালো রেস্তোরাঁ','Restaurant'):''}</small>`;
   $('dishes').innerHTML=CUR.menu.map((m,i)=>`<button class="dish" data-i="${i}"><span class="dn"><span class="bn">${m.bn}</span> <small>${m.en}</small></span><span class="dp">৳${m.price}<small> +${m.gain}</small></span></button>`).join('');
   for(const b of $('dishes').querySelectorAll('.dish'))b.onclick=()=>orderDish(+b.dataset.i);syncMenu()}
-function menuNote(m){return eating.dish?L2('খাচ্ছেন…','Eating…'):STAT.wallet<m.price?L2('টাকা কম','Not enough taka'):m.meal&&STAT.energy>=97?L2('এখন খিদে নেই','Not hungry'):''}
+function menuNote(m){return eating.dish?L2('খাচ্ছেন…','Eating…'):STAT.wallet<m.price?L2('টাকা কম','Not enough taka'):''}   // you can always eat; a full stomach just gains no more energy
 function syncMenu(){
   $('menuSub').textContent=L2('খাবার বেছে নিন। দাম টাকায়, পাশে শক্তি।','Pick something. Price in taka, then the energy it gives.');
   $('btnLeave').disabled=!!eating.dish;
@@ -142,7 +143,7 @@ function finishEating(){
   const m=eating.dish;eating.dish=null;addEnergy(m.gain);HOUR=(HOUR+m.min/60)%24;if(m.meal)STAT.ate=true;
   toast(L2(`${m.bn} খেলেন · শক্তি +${m.gain}`,`Ate ${m.en.toLowerCase()} · +${m.gain} energy`));roomSay(CUR.tier===1?L2('আবার আসবেন ভাই!','Come again, bhai!'):L2('আবার আসবেন, স্যার।','Please come again, sir.'));syncMenu();updateStatusUI()}
 
-$('btnEnter').onclick=enterRestaurant;$('btnLeave').onclick=leaveRestaurant;
+$('btnEnter').onclick=enterNear;$('btnLeave').onclick=leaveRestaurant;
 addEventListener('keydown',e=>{
-  if(e.key==='Escape'&&INSIDE){leaveRestaurant();return}
-  if(e.key==='Enter'&&!INSIDE&&!['INPUT','BUTTON','TEXTAREA','SELECT','A'].includes(e.target.tagName)&&restoState()===1)enterRestaurant()});
+  if(e.key==='Escape'&&INSIDE){if(PANO_ON)leavePano();else leaveRestaurant();return}
+  if(e.key==='Enter'&&!INSIDE&&!['INPUT','BUTTON','TEXTAREA','SELECT','A'].includes(e.target.tagName)&&(panoNear()||restoState()===1))enterNear()});

@@ -117,6 +117,7 @@ function honkIfBlocking(){   // a vehicle stopped right in front of us leans on 
   for(const v of vehicles){if(v.hx===undefined||v.parked||v.spd>1)continue;const ux=me.x-v.dx,uy=me.y-v.dy;if(ux>9||ux<-9||uy>9||uy<-9)continue;
     const a=ux*v.hx+uy*v.hy,l=-ux*v.hy+uy*v.hx;if(a>0&&a<v.len/2+6&&Math.abs(l)<v.wid/2+1&&v.honkT>1.5)v.honkT=mr(.4,1.4)}}
 function updAvatar(dt){
+  if(me.riding){const v=me.riding;me.x=me.dx=v.dx;me.y=me.dy=v.dy;me.spd=0;me.path=null;updStatus(dt,0,false);return}   // seated in a rickshaw, CNG or bus
   let vx=0,vy=0,want=0,movedNow=0;
   if(heldKeys.size){let sx=0,sy=0;for(const k of heldKeys){sx+=MKEYS[k][0];sy+=MKEYS[k][1]}
     if(sx||sy){const l=Math.hypot(sx,sy),w=scrToWorldDelta(sx/l,sy/l,1);vx=w[0];vy=w[1];want=1;me.path=null;me.goal=null;me.enterOnArrive=null;me.actAfter=null;if(cam.follow!==me)followMe()}}
@@ -143,7 +144,7 @@ function updAvatar(dt){
 }
 
 /* drawing: the usual figure, plus a red pencil ring and a bobbing "you" arrow so it can be found at any zoom */
-function drawAvatar(c,lod){
+function drawAvatar(c,lod){if(me.riding)return;
   const x=me.dx,y=me.dy,z=cam.zoom,r=Math.max(.8,8/z);
   J=mulberry32(5+BOIL);c.beginPath();const ring=[];for(let i=0;i<9;i++){const a=i/9*TAU;ring.push([x+Math.cos(a)*r,y+Math.sin(a)*r])}spoly(c,ring,r*.1);pencil(c,'#b8432f',.8,1.5);c.stroke();c.globalAlpha=1;
   drawPerson(c,me,x,y,Math.max(lod,1));

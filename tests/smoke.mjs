@@ -56,7 +56,7 @@ if (!voicesShown.startsWith(`Voices ${expectVoices}/`)) errors.push(`not every c
 
 const fps = () => page.evaluate(() => new Promise(r => { let n = 0; const t = performance.now(); const f = () => { n++; performance.now() - t < 2000 ? requestAnimationFrame(f) : r(n / 2); }; requestAnimationFrame(f); }));
 /* wait for the scene to finish what it is doing: toast gone, camera arrived, a few frames drawn */
-const settled = pg => pg.waitForFunction(() => { const j = window.__journey; if (!j || !j.loaded()) return false; const c = j.cam; const h = Math.floor(j.hour()), want = `${(h % 12) || 12}:`, clock = document.getElementById('clockEn').textContent; return document.getElementById('toast').hidden && Math.abs(c.zoom - c.tz) < .02 * c.tz && Math.hypot(c.x - c.tx, c.y - c.ty) < .3 && clock.startsWith(want) && clock.endsWith(h < 12 ? 'AM' : 'PM'); }, { timeout: 10000 })
+const settled = pg => pg.waitForFunction(() => { const j = window.__journey; if (!j || !j.loaded()) return false; const c = j.cam; const h = Math.floor(j.hour()), want = `${(h % 12) || 12}:`, clock = document.getElementById('clockEn').textContent; return document.getElementById('toast').hidden && !(j.rotating && j.rotating()) && Math.abs(c.zoom - c.tz) < .02 * c.tz && Math.hypot(c.x - c.tx, c.y - c.ty) < .3 && clock.startsWith(want) && clock.endsWith(h < 12 ? 'AM' : 'PM'); }, { timeout: 10000 })
   .then(() => pg.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(r))))));
 /* compare a screenshot with its approved 96-px-wide thumbnail: catches blank or broken scenes and big layout changes, shrugs off moving traffic */
 const THRESH = { mad: 14, bad: .13, dev: 8 }, NIGHT = { mad: 22, bad: .20 };   // run to run the same scene differs by up to ~11 (night ~16); a wrong or blank picture scores 50+
@@ -92,7 +92,7 @@ const shot = async (name, pg = page) => {
   await settled(pg); const file = path.join(OUT, `${name}.png`); await pg.screenshot({ path: file });
   if (fixed) { await compareRef(pg, name, file); await pause(pg, false); }
 };
-const click = id => page.click('#' + id);
+const click = id => page.evaluate(id => document.getElementById(id).click(), id);   // settings live in a folded panel
 const setHour = h => page.evaluate(h => { const s = document.getElementById('timeSlider'); s.value = h; s.dispatchEvent(new Event('input')); }, h);
 
 const results = [];
@@ -100,6 +100,21 @@ const renderMs = () => page.evaluate(() => { const { render, inside } = window._
 const step = async (name, fn) => { if (fn) await fn(); await shot(name); results.push({ view: name, fps: await fps(), ms: await renderMs() }); };
 await step('01-default');
 await step('02-turn-right', () => click('btnRotR'));
+// free rotation: right-drag turns the city to any angle; frames stay cheap enough while it turns
+{
+  const th0 = await page.evaluate(() => window.__journey.VIEW.th);
+  await page.mouse.move(700, 420); await page.mouse.down({ button: 'right' });
+  const t0 = Date.now(); let frames = 0;
+  for (let i = 1; i <= 12; i++) { await page.mouse.move(700 + i * 20, 420); frames += await page.evaluate(() => new Promise(r => requestAnimationFrame(() => r(1)))); }
+  const turnMs = (Date.now() - t0) / frames; await page.mouse.up({ button: 'right' });
+  await settled(page);
+  const r = await page.evaluate(() => ({ th: window.__journey.VIEW.th, facing: document.getElementById('facing').textContent }));
+  const dTh = ((r.th - th0) * 180 / Math.PI + 540) % 360 - 180;
+  console.log(`Free turn: ${dTh.toFixed(0)}° by right-drag, "${r.facing}", ~${turnMs.toFixed(0)} ms a frame while turning`);
+  if (Math.abs(dTh - 30) > 4) errors.push(`right-dragging 240 px should turn the city about 30°, got ${dTh.toFixed(1)}°`);
+  await shot('18-free-turn');
+  await page.evaluate(() => window.__journey.turnTo(Math.PI / 2)); await settled(page);
+}
 await step('03-street-level', () => click('btnAngle'));
 await step('04-top-down', () => click('btnAngle'));
 await step('05-bird-cutaway', async () => { await click('btnAngle'); await click('btnRotL'); await click('btnBld'); });
@@ -344,7 +359,7 @@ else {
   await page.evaluate(() => { const { me, RESTOS, nearestFree } = window.__journey; for (let r = 30; r < 200; r += 10) for (let a = 0; a < 12; a++) { const x = RESTOS[0].entry[0] + Math.cos(a) * r, y = RESTOS[0].entry[1] + Math.sin(a) * r, f = nearestFree(x, y, 3); if (f && RESTOS.every(R => Math.hypot(f[0] - R.entry[0], f[1] - R.entry[1]) > 15)) { me.x = me.dx = f[0]; me.y = me.dy = f[1]; return; } } });   // away from every restaurant door
   await settle(500); const far = await J();
   console.log(`Restaurant: ${resto.name}; prompt near=${near.btn ? '"' + near.btnText + '"' : 'HIDDEN'} far=${far.btn ? 'SHOWN' : 'hidden'}`);
-  if (!near.btn || near.state !== 1 || near.btnOff || far.btn) errors.push('enter prompt should show next to the hotel and only there: ' + JSON.stringify({ near, far }));
+  if (!near.btn || near.state !== 1 || near.btnOff || far.state !== 0) errors.push('enter prompt should show next to the hotel and only there (elsewhere it may offer another place): ' + JSON.stringify({ near, far }));
   // closed in the small hours
   await setHour(3); await settle(900); await toEntry(); await settle(500); const shut = await J();
   console.log(`Restaurant at 3 AM: state ${shut.state}, button ${shut.btnOff ? 'disabled' : 'ENABLED'}`);
@@ -371,11 +386,11 @@ else {
   const out = await J();
   console.log(`Leaving: inside ${out.inside}, goal ${out.goal}`);
   if (out.inside || out.overlay || out.goal !== 2) errors.push('leaving did not close the hotel or advance the goal: ' + JSON.stringify(out));
-  // can't afford / not hungry
+  // can't afford locks a dish; being full never does
   const probe = async (wallet, energy) => { await page.evaluate(([w, e]) => { const { STAT } = window.__journey; STAT.wallet = w; STAT.energy = e; }, [wallet, energy]); await settle(150); await page.keyboard.press('Enter'); await settle(300); const r = await J(); await page.keyboard.press('Escape'); await settle(300); return r.dishes; };
   const poor = await probe(5, 30), full = await probe(300, 100);
   console.log(`Menu limits: broke -> ${poor.map(d => d ? 'x' : 'ok').join(' ')}; full -> ${full.map(d => d ? 'x' : 'ok').join(' ')}`);
-  if (!poor.every(Boolean) || !(full[0] && full[3] && !full[4])) errors.push('menu should lock what you cannot afford, and meals (not tea) when you are full');
+  if (!poor.every(Boolean) || full.some(Boolean)) errors.push('menu should lock only what you cannot afford (a full stomach never locks food)');
   // tap the hotel from 30 m away: walk over and go in
   await page.evaluate(() => { const { me, cam, RESTO, nearestFree } = window.__journey; const f = nearestFree(RESTO.entry[0] + 30, RESTO.entry[1] + 4, 30); me.x = me.dx = f[0]; me.y = me.dy = f[1]; me.path = null; me.spd = 0; cam.follow = me; cam.tz = 10; });
   await settle(2200);
@@ -439,6 +454,49 @@ console.log(`Goals: bank -> goal ${g2.goal}, wallet ${g2.wallet}`);
 if (g2.goal !== 3 || g2.wallet !== 400) errors.push('bank goal should pay 100 and move on: ' + JSON.stringify(g2));
 await page.evaluate(() => { const { me, STAT, nearestFree } = window.__journey; STAT.wallet = 777; STAT.energy = 64; window.__journey.cam.follow = me; const f = nearestFree(me.x, me.y, 60); me.x = me.dx = f[0]; me.y = me.dy = f[1]; });
 await step('08-avatar-closeup', () => page.evaluate(() => { window.__journey.cam.tz = 16; }));
+
+// Kamalapur: walk into the concourse, look all the way round, watch a train leave, buy tea, leave with Escape
+{
+  const K = () => page.evaluate(() => { const j = window.__journey, P = j.PAN; return { on: j.station(), overlay: !document.getElementById('station').hidden, yaw: P.yaw, ann: P.annT > 0 ? P.ann : '', wallet: j.STAT.wallet,
+    btn: document.getElementById('btnEnter').hidden ? '' : document.getElementById('btnEnter').textContent, trains: j.TT.filter(t => t.st !== 'away').map(t => `${t.en}:${t.st}`) }; });
+  const home = await page.evaluate(() => [window.__journey.me.x, window.__journey.me.y]);
+  await setHour(16.1); await settle(300);
+  await page.evaluate(() => { const j = window.__journey, p = j.FW(j.sites.kamalapur, 50, 47); j.me.x = j.me.dx = p[0]; j.me.y = j.me.dy = p[1]; j.me.path = null; j.me.spd = 0; });
+  await settle(500);
+  const at = await K();
+  await page.evaluate(() => { document.activeElement && document.activeElement.blur(); window.__journey.STAT.wallet = 300; });
+  await page.keyboard.press('Enter'); await settle(600);
+  const inStation = await K();
+  console.log(`Kamalapur: prompt ${at.btn ? '"' + at.btn + '"' : 'HIDDEN'}; inside ${inStation.on ? 'yes' : 'NO'}; trains ${inStation.trains.join(', ') || 'none'}`);
+  if (!at.btn || !inStation.on || !inStation.overlay) errors.push('Enter at Kamalapur should open the station panorama: ' + JSON.stringify({ at, inStation }));
+  const look = (yaw, pitch = .1) => page.evaluate(([y, p]) => { const P = window.__journey.PAN; P.yaw = y; P.pitch = p; P.vy = 0; P.goal = null; }, [yaw, pitch]);
+  await step('14-station-platforms', () => look(0));
+  await step('15-station-counters', () => look(-Math.PI / 2));
+  await step('16-station-forecourt', () => look(Math.PI));
+  await step('17-station-roof', () => look(.3, .75));
+  // dragging turns the view
+  await look(0); await settle(100);
+  await page.mouse.move(700, 300); await page.mouse.down(); await page.mouse.move(400, 300, { steps: 8 }); await page.mouse.up(); await settle(400);
+  const dragged = await K();
+  console.log(`Drag: yaw ${(dragged.yaw * 180 / Math.PI).toFixed(0)}°`);
+  if (dragged.yaw < .2) errors.push('dragging left should turn the view right: yaw ' + dragged.yaw);
+  // the departure: an announcement 15 minutes before, then the train pulls out
+  const dep = await page.evaluate(() => { const t = window.__journey.TT.find(t => t.en === 'Subarna Express'); return (t.h + t.late / 60) % 24; });
+  await setHour(dep - .2); await settle(700); const ann = await K();
+  await setHour(dep + .02); await settle(1500); const gone = await K();
+  console.log(`Subarna: announcement ${ann.ann ? 'shown' : 'MISSING'}; after departure ${gone.trains.join(', ') || 'none'}`);
+  if (!/Subarna|সুবর্ণ/.test(ann.ann)) errors.push('no announcement before the Subarna Express: ' + JSON.stringify(ann));
+  if (!gone.trains.includes('Subarna Express:leaving')) errors.push('the Subarna Express should be leaving after its time: ' + JSON.stringify(gone.trains));
+  await page.click('#stActs button[data-a="tea"]'); await settle(300);
+  const tea = await K();
+  if (tea.wallet !== 290) errors.push('tea at the station should cost 10 taka: wallet ' + tea.wallet);
+  await page.keyboard.press('Escape'); await settle(500);
+  const left = await K();
+  console.log(`Station tea: wallet ${tea.wallet}; after Escape inside ${left.on}`);
+  if (left.on || left.overlay) errors.push('Escape should leave the station');
+  await page.evaluate(h => { const { me } = window.__journey; me.x = me.dx = h[0]; me.y = me.dy = h[1]; me.path = null; }, home);
+  await setHour(10); await settle(500);
+}
 
 // save/load check: change state, reload, confirm it was restored
 await page.evaluate(() => { document.getElementById('btnBld').click(); const s = document.getElementById('timeSlider'); s.value = 15.5; s.dispatchEvent(new Event('input')); });

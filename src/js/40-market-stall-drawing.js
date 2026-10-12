@@ -98,7 +98,12 @@ function drawDog(c,d,lod){
     if(lod>1){pencil(c,INK,.6,.8);c.beginPath();c.ellipse(x,y-.12,.26,.13,0,0,TAU);c.moveTo(x-.26*f,y-.1);c.quadraticCurveTo(x-.5*f,y-.25-sw,x-.42*f,y-.42);if(trot){c.moveTo(x-.1,y-.02);c.lineTo(x-.1+sw,y);c.moveTo(x+.12,y-.02);c.lineTo(x+.12-sw,y)}c.stroke()}return}
   if(k==='goat'){c.beginPath();c.ellipse(x,y-.42,.45,.22,0,0,TAU);c.fill();c.beginPath();c.ellipse(x+.46*f,y-.58,.14,.1,.3*f,0,TAU);c.fill();c.fillStyle=wash('#6b5a45',.9);c.beginPath();c.moveTo(x+.5*f,y-.66);c.lineTo(x+.46*f,y-.82);c.lineTo(x+.55*f,y-.68);c.fill();
     pencil(c,INK,.7,.9);c.beginPath();for(const l of[-.3,-.12,.14,.32]){c.moveTo(x+l,y-.25);c.lineTo(x+l+(l>0?sw:-sw),y)}c.moveTo(x+.58*f,y-.5);c.lineTo(x+.6*f,y-.4);if(lod>1){c.ellipse(x,y-.42,.45,.22,0,0,TAU)}c.stroke();return}
+  if(d.st!=='rest'){   // up on its legs: walking, or nose down sniffing
+    const sn=d.st==='sniff';pencil(c,wash(d.col,.9),1,2.2);c.beginPath();for(const l of[-.32,-.2,.22,.34]){c.moveTo(x+l*f,y-.4);c.lineTo(x+l*f+(l>0?-sw:sw)*1.5,y)}c.stroke();
+    c.fillStyle=wash(d.col,.9);c.beginPath();c.ellipse(x,y-.46,.46,.17,0,0,TAU);c.fill();c.beginPath();circ(c,x+.48*f,sn?y-.22:y-.62,.14);c.fill();
+    c.beginPath();c.moveTo(x+.44*f,sn?y-.32:y-.72);c.lineTo(x+.4*f,sn?y-.42:y-.86);c.lineTo(x+.52*f,sn?y-.34:y-.74);c.fill();
+    pencil(c,INK,.6,.8);c.beginPath();if(lod>1){c.ellipse(x,y-.46,.46,.17,0,0,TAU)}c.moveTo(x-.44*f,y-.5);c.quadraticCurveTo(x-.66*f,y-.62+sw,x-.6*f,y-.8);c.stroke();return}
   c.beginPath();c.ellipse(x,y-.18,.5,.24,0,0,TAU);c.fill();c.beginPath();circ(c,x+.42*f,y-.22,.16);c.fill();
-  if(trot||lod>1){pencil(c,INK,.6,.8);c.beginPath();if(lod>1){c.ellipse(x,y-.18,.5,.24,0,0,TAU);c.moveTo(x-.5*f,y-.15);c.quadraticCurveTo(x-.7*f,y-.1+(trot?sw:0),x-.55*f,y)}
-    if(trot){c.moveTo(x-.3,y-.05);c.lineTo(x-.3+sw*2,y);c.moveTo(x+.3,y-.05);c.lineTo(x+.3-sw*2,y)}c.stroke()}}
+  if(lod>1){pencil(c,INK,.6,.8);c.beginPath();if(lod>1){c.ellipse(x,y-.18,.5,.24,0,0,TAU);c.moveTo(x-.5*f,y-.15);c.quadraticCurveTo(x-.7*f,y-.1,x-.55*f,y)}
+    c.stroke()}}
 

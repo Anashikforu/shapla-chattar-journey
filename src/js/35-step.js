@@ -15,7 +15,7 @@ function step(dt){
   for(let i=vehicles.length-1;i>=0;i--)if(vehicles[i].dead){const v=vehicles[i];if(cam.follow===v){cam.follow=null;toast('They rode off the edge of the sketch.');hideCard()}vehicles.splice(i,1)}
   STEPN++;for(let i=0;i<peds.length;i++){const p=peds[i];if(Math.abs(p.x-cam.x)>260||Math.abs(p.y-cam.y)>200){if((i+STEPN)%3===0)updPed(p,dt*3)}else updPed(p,dt)}
   for(let i=peds.length-1;i>=0;i--)if(peds[i].dead)peds.splice(i,1);
-  updFixed(dt);updAvatar(dt);updPlayers(dt);updCrowds(dt);updTrain(dt);updBridges(dt);updSnatch(dt);updMetro(dt);updAnimals(dt);updBeggars(dt);
+  updFixed(dt);updAvatar(dt);updTrip(dt);updPlayers(dt);updCrowds(dt);updTrain(dt);updBridges(dt);updSnatch(dt);updMetro(dt);updAnimals(dt);updBeggars(dt);
   for(let i=bubbles.length-1;i>=0;i--){const b=bubbles[i];if(simT-b.t0>b.dur||(b.owner&&b.owner.dead))bubbles.splice(i,1)}
   const k=Math.min(1,dt*8);for(const v of vehicles){v.dx+=(v.x-v.dx)*k;v.dy+=(v.y-v.dy)*k}for(const p of peds){p.dx+=(p.x-p.dx)*k;p.dy+=(p.y-p.dy)*k}
   audioTick(dt);

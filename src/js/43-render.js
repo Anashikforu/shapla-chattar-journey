@@ -39,11 +39,11 @@ function render(){
   
   for(const it of items){const o=it.o;switch(it.t){
     case 'b':{let ghost=false;if(z>2.2&&!inQuad(o.foot,fX,fY)){const fd=D(fX,fY),sb=scrBox(o.bb),fs=toScreen(fX,fY),cs=toScreen(KX*6,-KZ*6);ghost=(z>3.2&&o.depth>fd+2&&sb[0]<fs[0]+W*(BMODE==='cut'?.35:.08)&&sb[2]>fs[0]-W*(BMODE==='cut'?.35:.08)&&sb[1]<fs[1]-H*.01&&sb[3]>fs[1]-H*(BMODE==='cut'?.4:.06))||(o.depth>(RIN)*Math.hypot(VIS[0],VIS[1])&&sb[0]<cs[0]&&sb[2]>cs[0]&&sb[1]<cs[1]&&sb[3]>cs[1])}
-      if(z<6.8&&!o.spr&&budget-->0)makeSprite(o);
+      if(z<6.8&&!o.spr&&!ROT.on&&budget-->0)makeSprite(o);
       if(BMODE==='flat'){drawFoot(ctx,o);break}
       if(ghost&&BMODE==='cut'){drawStub(ctx,o,3.2);break}
       if(ghost){ctx.save();ctx.globalAlpha=.24;if(o.spr)ctx.drawImage(o.mip[0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1]);ctx.restore();ctx.beginPath();for(const p of o.parts){J=mulberry32(p.seed+BOIL);spoly(ctx,p.hull,.2)}pencil(ctx,INK,.35,1);ctx.stroke();ctx.globalAlpha=1;break}
-      if(z<6.8&&o.spr){o.sprT=SPR.frame;ctx.drawImage(o.mip[z*DPR<1.4?2:z*DPR<2.8?1:0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1])}else for(const p of o.parts)drawPart(ctx,p,o);break}
+      if(z<6.8&&o.spr&&!ROT.on){o.sprT=SPR.frame;ctx.drawImage(o.mip[z*DPR<1.4?2:z*DPR<2.8?1:0],o.bb[0],o.bb[1],o.bb[2]-o.bb[0],o.bb[3]-o.bb[1])}else if(ROT.on&&z<5)for(const p of o.parts)drawPartFast(ctx,p);else for(const p of o.parts)drawPart(ctx,p,o);break}
     case 'tr':drawTree(ctx,o,lodT);break;
     case 'po':drawPole(ctx,o,lodT);break;
     case 'sp':drawSpan(ctx,o);break;

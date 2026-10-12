@@ -2,8 +2,11 @@
 let train={a:-40,dir:1,wait:0,state:'in'};
 function genKamalapur(){
   let F=null;for(const[r,dg]of[[330,32],[350,40],[320,50],[360,20],[300,60]]){F=reserveSite(r,dg,100,100);if(F)break}if(!F)return;sites.kamalapur=F;paintPlaza(F,'#d9d4c6');
-  paintRect(F,0,F.L,82,100,'#8a8278',.55,c=>{c.strokeStyle='#5a534a';c.globalAlpha=.8;c.lineWidth=.12;c.beginPath();for(const b of[84,85.4,90,91.4,96,97.4]){const p0=FW(F,-60,b),p1=FW(F,F.L+60,b);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1])}c.stroke();
-    c.globalAlpha=.35;c.beginPath();for(let a=-60;a<F.L+60;a+=1.2)for(const b of[84,90,96]){const p0=FW(F,a,b-.4),p1=FW(F,a,b+1.8);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1])}c.stroke()});
+  /* the rail corridor: the tracks run straight out of the station to the edge of the sketch both ways, and nothing is built on them */
+  const R0=-1400,R1=F.L+1400;F.rail=[R0,R1];occMark(FQ(F,R0,R1,80,102));
+  for(let i=buildings.length-1;i>=0;i--){const b=buildings[i];if(!b.landmark&&!b.name&&b.foot.some(p=>{const dx=p[0]-F.q0[0],dy=p[1]-F.q0[1],a=dx*F.t[0]+dy*F.t[1],bb=dx*F.n[0]+dy*F.n[1];return a>R0&&a<R1&&bb>80&&bb<102}))buildings.splice(i,1)}
+  paintRect(F,R0,R1,82,100,'#8a8278',.55,c=>{c.strokeStyle='#5a534a';c.globalAlpha=.8;c.lineWidth=.12;c.beginPath();for(const b of[84,85.4,90,91.4,96,97.4]){const p0=FW(F,R0,b),p1=FW(F,R1,b);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1])}c.stroke();
+    c.globalAlpha=.35;c.beginPath();for(let a=R0;a<R1;a+=1.2)for(const b of[84,90,96]){const p0=FW(F,a,b-.4),p1=FW(F,a,b+1.8);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1])}c.stroke()});
   paintRect(F,14,86,80,83,'#c9c3b5',.8);
   const st={F,depth:()=>D(...FW(F,50,80)),kind:'station'};specials.push(st);
   st.bb=()=>{const pts=[FW(F,17,14),FW(F,83,14),FW(F,17,80),FW(F,83,80)];let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(const p of pts)for(const z of[0,22]){const q=P3(p,z);x0=Math.min(x0,q[0]);x1=Math.max(x1,q[0]);y0=Math.min(y0,q[1]);y1=Math.max(y1,q[1])}return[x0,y0,x1,y1]};

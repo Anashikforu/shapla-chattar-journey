@@ -19,7 +19,8 @@ function genRoutes(){
       for(let i=0;i<R.pts.length;i++)if(Math.hypot(R.pts[i][0],R.pts[i][1])<48.5){R.stopS=R.cum[i];break}
       R.stops=[];for(const st of busStops){if(st.arm!==a&&st.arm!==b)continue;const[s,d]=nearestS(R,st.x,st.y);if(d<(st.arm===a?A.hw:B.hw)+1)R.stops.push({s,stop:st})}R.stops.sort((x,y)=>x.s-y.s);
       armRoutes[a][b]=R})});
-  for(const Rd of roads){if(Rd.kind==='arm')continue;if(Rd.kind==='lane'){for(const rev of[0,1]){const p=rev?Rd.pts.slice().reverse():Rd.pts;sideRoutes.push(mkRoute(p,p.map(()=>Rd.hw-.9),{kind:'lane'}))}continue}
+  for(const Rd of roads){if(Rd.kind==='arm'||Rd.kind==='gali')continue;   // galis are for walking
+    if(Rd.kind==='lane'){for(const rev of[0,1]){const p=rev?Rd.pts.slice().reverse():Rd.pts;sideRoutes.push(mkRoute(p,p.map(()=>Rd.hw-.9),{kind:'lane'}))}continue}
     for(const rev of[0,1]){const p=offsetPts(rev?Rd.pts.slice().reverse():Rd.pts,Rd.hw/2);sideRoutes.push(mkRoute(p,p.map(()=>Math.max(.4,Rd.hw/2-.5)),{kind:'side'}))}}
 }
 

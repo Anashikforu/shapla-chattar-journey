@@ -6,13 +6,20 @@ function genAnimals(){
   const mk=(kind,x,y,cols)=>dogs.push({kind,x,y,col:rpick(cols),ph:RND()*TAU,fc:RND()<.5?1:-1,st:'rest',t:rr(1,12),fix:false,barkT:rr(5,30)});
   const DOGC=['#c9a36b','#8a6a4a','#e0d0b0','#5a4a3a','#b8a58a'],CATC=['#d9a066','#4a4440','#e8e0d0','#8a8a86','#c9824a'],GOATC=['#e8e0d0','#8a6a4a','#3a3430','#c9b89a'];
   for(const t of trees.slice(0,8))mk('dog',t.x+rr(-2,2),t.y+rr(1,3),DOGC);
-  const fp=walks.filter(w=>!w.closed&&w.side!==0&&w.len>40);   // more strays along the footpaths
-  for(let i=0;i<16&&fp.length;i++){const P=rpick(fp),o=[];walkPos(P,rr(8,P.len-8),-(P.sw/2)+.7,o);if(inWorld(o[0],o[1],-20)&&Math.hypot(o[0],o[1])>RSW+6)mk('dog',o[0],o[1],DOGC)}
+  /* Motijheel's streets are full of strays: small packs of two to four sprawled along the footpaths, at the eateries, the station and the mosque */
+  const pack=(x,y,n)=>{for(let k=0;k<n;k++)mk('dog',x+rr(-1.6,1.6),y+rr(-1.2,1.2),DOGC)};
+  const fp=walks.filter(w=>!w.closed&&w.side!==0&&w.len>40);
+  for(let i=0;i<22&&fp.length;i++){const P=rpick(fp),o=[];walkPos(P,rr(8,P.len-8),-(P.sw/2)+.7,o);if(inWorld(o[0],o[1],-20)&&Math.hypot(o[0],o[1])>RSW+6)pack(o[0],o[1],1+(RND()*3|0))}
+  const eat=stalls.filter(s=>['hotel','grill','tea','singara'].includes(s.type));   // waiting for scraps where food is cooked
+  for(let i=0;i<14&&eat.length;i++){const s=rpick(eat);mk('dog',s.x+s.nx*(s.d/2+1.4)+s.tx*rr(-1.5,1.5),s.y+s.ny*(s.d/2+1.4)+s.ty*rr(-1.5,1.5),DOGC)}
+  if(sites.kamalapur)for(let i=0;i<3;i++){const c=FW(sites.kamalapur,rr(10,sites.kamalapur.L-10),rr(6,30));pack(c[0],c[1],2+(RND()*2|0))}
+  if(sites.baitul){const c=FW(sites.baitul,rr(6,sites.baitul.L-6),rr(4,12));pack(c[0],c[1],2)}
   const food=stalls.filter(s=>['tea','hotel','grill','singara','fuchka','jhalmuri'].includes(s.type));   // cats hang about where food is
   for(let i=0;i<12&&food.length;i++){const s=rpick(food);mk('cat',s.x+s.nx*(s.d/2+1.1)+s.tx*rr(-1,1),s.y+s.ny*(s.d/2+1.1)+s.ty*rr(-1,1),CATC)}
   for(const F of[sites.baitul,sites.kamalapur,sites.green,sites.mgbhs])if(F)for(let i=0;i<2;i++){const c=FW(F,rr(8,F.L-8),rr(8,F.D-8));mk('goat',c[0],c[1],GOATC)}   // a few goats on the open grounds
 }
 const PACE={dog:1.5,cat:1.1,goat:.55},ROAM={dog:11,cat:4,goat:7};
+const dogLazy=()=>HOUR>10&&HOUR<17?3:lightsOn()>.5?.6:1;   // strays sleep through the day's heat and roam at night
 /* strays rest, trot to a spot near home, sniff about, rest again; dogs bark at the avatar and at night */
 function updWander(dt){
   for(const d of dogs){
@@ -21,7 +28,7 @@ function updWander(dt){
     if(d.st==='rest'){if(d.t<=0){const a=Math.random()*TAU,r=mr(2,ROAM[d.kind]),tx=d.home[0]+Math.cos(a)*r,ty=d.home[1]+Math.sin(a)*r;if(!navAt(tx,ty)&&cellAt(tx,ty)!==2){d.tx=tx;d.ty=ty;d.st='trot'}else d.t=mr(3,8)}}
     else if(d.st==='trot'){const dx=d.tx-d.x,dy=d.ty-d.y,L=Math.hypot(dx,dy),s=Math.min(L,PACE[d.kind]*dt);
       if(L<.2){d.st='sniff';d.t=mr(2,5)}else{const nx=d.x+dx/L*s,ny=d.y+dy/L*s;if(navAt(nx,ny)||cellAt(nx,ny)===2){d.st='rest';d.t=mr(4,12)}else{d.x=nx;d.y=ny;d.ph+=dt*9;const f=sdir(dx,dy);if(Math.abs(f)>.05)d.fc=f>0?1:-1}}}
-    else if(d.st==='sniff'){if(d.t<=0){d.st='rest';d.t=mr(6,25)}}
+    else if(d.st==='sniff'){if(d.t<=0){d.st='rest';d.t=mr(6,25)*(d.kind==='dog'?dogLazy():1)}}
     if(d.kind==='dog'&&d.barkT<=0){const near=Math.hypot(d.x-me.x,d.y-me.y)<6,night=lightsOn()>.5;if(near||(night&&Math.random()<.3)){sfx('sfx_bark',d.x,d.y);d.barkT=mr(near?18:25,60)}else d.barkT=mr(5,20)}}}
 let flockT=20;
 function updAnimals(dt){

@@ -16,11 +16,12 @@ function paintGround(c,ppm,live){
   c.globalAlpha=1;const sw=wash('#ddd6c6',.8);c.strokeStyle=sw;for(const R of roads)if(R.sw>0){c.lineWidth=2*(R.hw+R.sw)-.2;c.stroke(R.path)}c.fillStyle=sw;c.beginPath();circ(c,0,0,RSW-.1);c.fill();
   if(live&&ppm>7&&hatchPat){hatchPat.setTransform(new DOMMatrix().scaleSelf(2.2/128).rotateSelf(70));c.strokeStyle=hatchPat;c.globalAlpha=.5;for(const R of roads)if(R.sw>0){c.lineWidth=2*(R.hw+R.sw);c.stroke(R.path)}c.globalAlpha=1}
   // curbs then carriageway
-  c.strokeStyle=INK;c.globalAlpha=.8;c.lineWidth=3.4/ppm;for(const R of roads){c.stroke(R.curbL);c.stroke(R.curbR)}c.beginPath();circ(c,0,0,ROUT);c.stroke();
-  c.globalAlpha=1;const rc=wash(rain>.3?'#7d7870':'#8f8a80',.8);c.strokeStyle=rc;for(const R of roads){c.lineWidth=2*R.hw-.25;c.stroke(R.path)}c.fillStyle=rc;c.beginPath();circ(c,0,0,ROUT-.12);c.fill();
-  if(hatchPat){hatchPat.setTransform(new DOMMatrix().scaleSelf(6/128));c.strokeStyle=hatchPat;c.fillStyle=hatchPat;for(const R of roads){c.lineWidth=2*R.hw;c.stroke(R.path)}c.beginPath();circ(c,0,0,ROUT);c.fill()}
+  c.strokeStyle=INK;c.globalAlpha=.8;c.lineWidth=3.4/ppm;for(const R of roads){if(R.kind==='gali')continue;c.stroke(R.curbL);c.stroke(R.curbR)}c.beginPath();circ(c,0,0,ROUT);c.stroke();
+  c.globalAlpha=1;const rc=wash(rain>.3?'#7d7870':'#8f8a80',.8);c.strokeStyle=rc;for(const R of roads){if(R.kind==='gali')continue;c.lineWidth=2*R.hw-.25;c.stroke(R.path)}c.fillStyle=rc;c.beginPath();circ(c,0,0,ROUT-.12);c.fill();
+  if(hatchPat){hatchPat.setTransform(new DOMMatrix().scaleSelf(6/128));c.strokeStyle=hatchPat;c.fillStyle=hatchPat;for(const R of roads){if(R.kind==='gali')continue;c.lineWidth=2*R.hw;c.stroke(R.path)}c.beginPath();circ(c,0,0,ROUT);c.fill()}
   // markings
-  c.strokeStyle='#f7f3e8';c.globalAlpha=.82;c.lineWidth=.24;c.setLineDash([3.2,3.8]);for(const R of roads)if(R.center&&R.kind!=='lane')c.stroke(R.center);c.setLineDash([]);
+  c.globalAlpha=1;c.lineCap='round';for(const R of roads)if(R.kind==='gali'){c.strokeStyle=wash('#c9a98a',.75);c.lineWidth=2*R.hw;c.stroke(R.path);c.strokeStyle=INK;c.globalAlpha=.25;c.lineWidth=.9/ppm;c.stroke(R.curbL);c.stroke(R.curbR);c.globalAlpha=1}   // galis: old brick paving
+  c.strokeStyle='#f7f3e8';c.globalAlpha=.82;c.lineWidth=.24;c.setLineDash([3.2,3.8]);for(const R of roads)if(R.center&&R.kind!=='lane'&&R.kind!=='gali')c.stroke(R.center);c.setLineDash([]);
   c.strokeStyle=wash('#7f9f5a',.8);c.globalAlpha=1;c.lineWidth=1.1;for(const A of ARMS)if(A.hw>=10&&A.center)c.stroke(A.center);
   c.strokeStyle=INK;c.globalAlpha=.4;c.lineWidth=.8/ppm;for(const A of ARMS)if(A.hw>=10&&A.center){c.save();c.lineWidth=1.3;c.globalAlpha=.25;c.stroke(A.center);c.restore()}
   c.fillStyle='#f7f3e8';c.globalAlpha=.9;for(const z of zebras){c.beginPath();for(const q of z)ppath(c,q);c.fill()}

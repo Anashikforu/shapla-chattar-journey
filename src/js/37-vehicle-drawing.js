@@ -19,16 +19,16 @@ function wheelV(c,P,a,b,r,lod){c.beginPath();for(let i=0;i<=14;i++){const t=i/14
 function lampQuad(c,P,a,b,z,w,h,col){c.fillStyle=col;fillPoly(c,[P(a,b-w,z),P(a,b+w,z),P(a,b+w,z+h),P(a,b-w,z+h)])}
 function drawVehicle(c,v,lod){
   const x=v.dx,y=v.dy,fx=v.hx,fy=v.hy,T=v.type;
-  if(lod===0){c.fillStyle=T==='rickshaw'?(v.hood||'#1d2b4a'):v.col||'#555';c.globalAlpha=1;c.beginPath();const hl=v.len/2,hw=v.wid/2+.2,lx=fy,ly=-fx;
+  if(lod===0){c.fillStyle=T==='rickshaw'||T==='auto'?(v.hood||'#1d2b4a'):v.col||'#555';c.globalAlpha=1;c.beginPath();const hl=v.len/2,hw=v.wid/2+.2,lx=fy,ly=-fx;
     c.moveTo(x+fx*hl+lx*hw,y+fy*hl+ly*hw);c.lineTo(x+fx*hl-lx*hw,y+fy*hl-ly*hw);c.lineTo(x-fx*hl-lx*hw,y-fy*hl-ly*hw);c.lineTo(x-fx*hl+lx*hw,y-fy*hl+ly*hw);c.fill();return}
   pencil(c,INK,.72,lod>1?.95:.8);
-  if(T==='rickshaw')return drawRickshaw(c,v,x,y,fx,fy,lod);
+  if(T==='rickshaw'||T==='auto')return drawRickshaw(c,v,x,y,fx,fy,lod);
   if(lod===1){const hh={car:v.sub==='micro'?1.9:1.4,cng:1.7,bus:3,dd:4.3,bike:1.3,leguna:1.9,covan:2.2,cash:2.2,thela:.9}[T]||1.5;const cc=T==='cng'?'#3d8b4a':T==='thela'?'#8a6a4a':v.col;
     obox(c,x,y,fx,fy,v.len,T==='bike'?.5:v.wid,.3,hh,wash(T==='bus'||T==='dd'?v.col2:cc,.55),wash(shade(cc,.78),.82),wash(cc,.72));return}
   const L=v.len/2,Wd=v.wid/2,col=v.col,side=wash(shade(col,.78),.82),front=wash(col,.72),top=wash(col,.5),glass='rgba(62,86,110,.72)',glassTop='rgba(90,120,150,.55)';
   const lx=fy,ly=-fx,P=(a,b,z)=>[x+fx*a+lx*b+KX*z,y+fy*a+ly*b-KZ*z];
   const wheels=(pairs,r)=>{for(const sd of[-1,1]){if(!sideVis(fx,fy,sd))continue;for(const a of pairs)wheelV(c,P,a,sd*(Wd+.02),r,lod)}};
-  const TY={cash:[L*.6,-L*.5],car:[L*.62,-L*.62],cng:[-L*.45],bus:[L*.62,-L*.55],dd:[L*.62,-L*.55],leguna:[L*.6,-L*.55],covan:[L*.6,-L*.5]}[T];
+  const TY={cash:[L*.6,-L*.5],car:[L*.62,-L*.62],cng:[-L*.55],bus:[L*.62,-L*.55],dd:[L*.62,-L*.55],leguna:[L*.6,-L*.55],covan:[L*.6,-L*.5]}[T];
   if(TY){c.fillStyle='#2a2826';c.globalAlpha=1;const tl=T==='bus'||T==='dd'?.55:.34,tw=.14;for(const a of TY)for(const sd of[-1,1]){const b=sd*(Wd+.01);fillPoly(c,[P(a-tl,b-tw,0),P(a+tl,b-tw,0),P(a+tl,b+tw,0),P(a-tl,b+tw,0)])}
     if(T==='cng'){fillPoly(c,[P(L*.72-.26,-.1,0),P(L*.72+.26,-.1,0),P(L*.72+.26,.1,0),P(L*.72-.26,.1,0)])}}
   if(T==='car'&&lod>1&&v.sub!=='micro'){c.fillStyle=wash(col,.6);for(const sd of[-1,1]){const m=P(L*.18,sd*(Wd+.12),.85);c.fillRect(m[0]-.07,m[1]-.05,.14,.1)}}
@@ -42,13 +42,26 @@ function drawVehicle(c,v,lod){
       if(lod>1){c.beginPath();for(const sd of[-1,1]){if(!sideVis(fx,fy,sd))continue;const p0=P(cabO,sd*(Wd-.14),hBody),p1=P(cabO-.02,sd*(Wd-.22),hTop);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1]);const d0=P(cabO,sd*Wd,.3),d1=P(cabO,sd*Wd,hBody);c.moveTo(d0[0],d0[1]);c.lineTo(d1[0],d1[1])}pencil(c,INK,.7,.8);c.stroke()}}
     if(lod>1&&fx*VIS[0]+fy*VIS[1]>0){lampQuad(c,P,L+.01,Wd*.62,.55,.16,.12,'#fff6cf');lampQuad(c,P,L+.01,-Wd*.62,.55,.16,.12,'#fff6cf')}
     if(lod>1&&-(fx*VIS[0]+fy*VIS[1])>0){lampQuad(c,P,-L-.01,Wd*.62,.6,.16,.1,'#c0392b');lampQuad(c,P,-L-.01,-Wd*.62,.6,.16,.1,'#c0392b')}}
-  else if(T==='cng'){const g='#3d8b4a',gs=wash(shade(g,.75),.85);
-    wheels([-L*.45],.24);wheelV(c,P,L*.72,0,.22,lod);
-    frustum(c,x,y,fx,fy,[.5,.42,L*.55],[.28,.34,L*.62],.3,1.05,{top:wash(g,.6),side:gs,front:wash(g,.75)});
-    const cab=frustum(c,x,y,fx,fy,[L*.62,Wd,-L*.22],[L*.58,Wd-.06,-L*.24],.28,1.5,{top:wash(g,.55),side:gs,front:glass,back:gs});
-    frustum(c,x,y,fx,fy,[L*.86,Wd+.04,-L*.05],[L*.8,Wd-.02,-L*.07],1.5,1.72,{top:wash('#2e3b2f',.88),side:wash('#2e3b2f',.92),front:wash('#2e3b2f',.92)});
-    if(lod>1){c.beginPath();for(const sd of[-1,1]){if(!sideVis(fx,fy,sd))continue;const b=sd*Wd;for(let a=-L*.8;a<=L*.35;a+=.2){const p0=P(a,b,.62),p1=P(a,b,1.48);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1])}const h0=P(-L*.8,b,1.05),h1=P(L*.35,b,1.05);c.moveTo(h0[0],h0[1]);c.lineTo(h1[0],h1[1])}pencil(c,INK,.55,.7);c.stroke();
-      if(fx*VIS[0]+fy*VIS[1]>0)lampQuad(c,P,L*.84,0,.85,.1,.1,'#fff6cf')}}
+  else if(T==='cng'){
+    /* Dhaka CNG (Bajaj RE): green all over, wide passenger tub behind a narrow nose on one front wheel, sloped windscreen,
+       green steel grille cages down both sides with the dark cabin showing through, a green hard roof, tail lights and plate at the back */
+    const g=col||'#3d8b4a',gs=wash(shade(g,.78),.85),gl=wash(g,.72),dark='rgba(34,40,36,.85)',bar='#1d4a26',fwd=fx*VIS[0]+fy*VIS[1]>0;
+    wheels([-L*.55],.23);wheelV(c,P,L*.72,0,.2,lod);
+    frustum(c,x,y,fx,fy,[L*.62,Wd,-L*.36],[L*.6,Wd-.03,-L*.36],.26,.92,{top:dark,side:gs,front:gs,back:gl});                 // passenger tub
+    frustum(c,x,y,fx,fy,[L*.36,.46,L*.6],[L*.26,.36,L*.5],.26,.9,{top:wash(g,.62),side:gs,front:gl});                       // nose over the front wheel
+    frustum(c,x,y,fx,fy,[L*.66,Wd-.03,-L*.28],[L*.66,Wd-.05,-L*.28],.92,1.5,{top:dark,side:dark,front:dark,back:gl});        // the caged cabin
+    frustum(c,x,y,fx,fy,[L*.14,.48,L*.5],[L*.12,.43,L*.38],.9,1.5,{top:gl,side:gs,front:glass});                             // windscreen
+    if(lod>1){c.beginPath();for(const sd of[-1,1]){if(!sideVis(fx,fy,sd))continue;const b=sd*(Wd-.02);
+        for(let a=-L*.9;a<=L*.37;a+=.13){const p0=P(a,b,.95),p1=P(a,b,1.47);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1])}
+        for(const z of[.95,1.21,1.47]){const h0=P(-L*.92,b,z),h1=P(L*.37,b,z);c.moveTo(h0[0],h0[1]);c.lineTo(h1[0],h1[1])}}
+      pencil(c,bar,.75,.8);c.stroke();
+      c.beginPath();for(const sd of[-1,1]){if(!sideVis(fx,fy,sd))continue;const b=sd*(Wd-.02);for(const a of[-L*.93,-L*.3,L*.36]){const p0=P(a,b,.92),p1=P(a,b,1.5);c.moveTo(p0[0],p0[1]);c.lineTo(p1[0],p1[1])}}   // door pillars
+      pencil(c,bar,.9,1.3);c.stroke();pencil(c,INK,.72,.95);c.globalAlpha=1}
+    const rs=wash(shade(g,.82),.88);
+    frustum(c,x,y,fx,fy,[L*.66,Wd+.03,-L*.32],[L*.58,Wd-.15,-L*.34],1.5,1.66,{top:wash(g,.7),side:rs,front:rs,back:rs});         // hard roof, full width over the tub, its top inset so the edges read as rounded
+    frustum(c,x,y,fx,fy,[L*.18,.52,L*.5],[L*.1,.4,L*.44],1.5,1.63,{top:wash(g,.7),side:rs,front:rs});                         // narrower over the driver: the CNG tapers to its nose
+    if(lod>1){if(fwd){lampQuad(c,P,L*.93,0,.52,.09,.11,'#fff6cf');for(const sd of[-1,1])lampQuad(c,P,L*.9,sd*.3,.62,.04,.06,'#e8a33a')}
+      else{for(const sd of[-1,1])lampQuad(c,P,-L*.99,sd*.5,.6,.07,.1,'#c0392b');lampQuad(c,P,-L*.99,0,.48,.2,.12,'#f1eee6');lampQuad(c,P,-L*.99,0,1.12,.38,.24,glass)}}}
   else if(T==='bus'||T==='dd'){const top2=T==='dd'?4.35:3.05;
     const body=frustum(c,x,y,fx,fy,[L,Wd,0],[L-.15,Wd-.1,-.05],.35,top2,{top:wash(v.col2,.45),side,front,back:side});
     wheels([L*.62,-L*.55],.48);
@@ -86,12 +99,14 @@ function drawRickshaw(c,v,x,y,fx,fy,lod){
   const lx=fy,ly=-fx,pt=(a,b,z)=>[x+fx*a+lx*b+KX*z,y+fy*a+ly*b-KZ*z];
   const wheel=(a,b,r)=>{c.beginPath();for(let i=0;i<=12;i++){const t=i/12*TAU,p=pt(a+Math.cos(t)*r,b,r+Math.sin(t)*r);i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1])}c.stroke()};
   pencil(c,INK,.8,.9);
-  if(lod===1){obox(c,x,y,fx,fy,v.len*.8,v.wid,.5,1.1,wash('#b8432f',.6),wash('#6b4a32',.7),wash('#6b4a32',.7));if(v.hoodUp){obox(c,x-fx*.5,y-fy*.5,fx,fy,.8,v.wid,1.1,1.9,wash(v.hood,.7),wash(v.hood,.8),wash(v.hood,.8))}return}
+  if(lod===1){obox(c,x,y,fx,fy,v.len*.8,v.wid,.5,1.1,wash('#b8432f',.6),wash('#6b4a32',.7),wash('#6b4a32',.7));const up=v.hoodUp||rain>.3;obox(c,x-fx*(up?.5:.85),y-fy*(up?.5:.85),fx,fy,up?.8:.32,v.wid,1.1,up?1.9:1.45,wash(v.hood,.7),wash(v.hood,.8),wash(v.hood,.8));return}
   const pulFront=fx*VIS[0]+fy*VIS[1]>0;
-  const drawPuller=()=>{const pl=v.puller;pl.fc=sdir(fx,fy)>=0?1:-1;if(v.parked){return}pl.pose='pedal';pl.act='handle';pl.ph=(v.s||0)*2.2;const b=pt(.55,0,.25);drawPerson(c,pl,b[0],b[1],lod,{noUmb:true})};
+  const auto=v.type==='auto';
+  const drawPuller=()=>{const pl=v.puller;pl.fc=sdir(fx,fy)>=0?1:-1;if(v.parked){return}if(auto){pl.pose='sit';pl.act='handle';const b=pt(.6,0,.2);drawPerson(c,pl,b[0],b[1],lod,{noUmb:true});return}pl.pose='pedal';pl.act='handle';pl.ph=(v.s||0)*2.2;const b=pt(.55,0,.25);drawPerson(c,pl,b[0],b[1],lod,{noUmb:true})};   // an auto's driver sits and twists the throttle
   if(!pulFront)drawPuller();
   wheel(-.55,.55,.34);wheel(-.55,-.55,.34);wheel(1,0,.3);
   c.beginPath();let p=pt(1,0,.34);c.moveTo(p[0],p[1]);p=pt(.45,0,.62);c.lineTo(p[0],p[1]);p=pt(-.55,0,.55);c.lineTo(p[0],p[1]);p=pt(.95,0,1.05);const hb=pt(1,0,.34);c.moveTo(hb[0],hb[1]);c.lineTo(p[0],p[1]);c.stroke();
+  if(auto)obox(c,x-fx*.45,y-fy*.45,fx,fy,.55,.8,.2,.6,wash('#2a2b2e',.85),wash('#3a3b3e',.9),wash('#3a3b3e',.9));   // the battery box under the seat
   obox(c,x-fx*.5,y-fy*.5,fx,fy,.62,1.08,.6,.88,wash('#b8432f',.75),wash('#6b4a32',.8),wash('#6b4a32',.8));
   // painted back panel
   const bp=[pt(-.82,-.52,.85),pt(-.82,.52,.85),pt(-.82,.52,1.4),pt(-.82,-.52,1.4)];c.fillStyle=wash(v.art[0],.8);fillPoly(c,bp);
@@ -101,8 +116,14 @@ function drawRickshaw(c,v,x,y,fx,fy,lod){
   const seatP=(b)=>pt(-.48,b,.45);
   if(v.parked){const pl=v.puller;pl.fc=sdir(fx,fy)>=0?-1:1;pl.pose='sit';pl.act=null;pl.sleepFace=v.sleepy;const s=seatP(0);drawPerson(c,pl,s[0],s[1],lod,{noUmb:true})}
   else{const n=v.pax.length;v.pax.forEach((pp,i)=>{pp.fc=sdir(fx,fy)>=0?1:-1;pp.pose='sit';pp.act=null;const s=seatP(n>1?(i?-.24:.24):0);drawPerson(c,pp,s[0],s[1],lod,{noUmb:true})})}
-  // hood
-  if(v.hoodUp){c.globalAlpha=1;const arc=(a)=>{const r=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;r.push(pt(a,Math.cos(t)*.56,1.38+Math.sin(t)*.62))}return r};
+  // hood: every rickshaw has one. Up for rain, sun or privacy; otherwise folded back in pleats behind the seat
+  const up=v.hoodUp||rain>.3&&!v.parked||v.parked&&v.hoodUp;
+  if(!up){c.globalAlpha=1;const fold=(a,h)=>{const r=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI,sn=Math.sin(t);r.push(pt(a-.22*sn,Math.cos(t)*.56,1.3+sn*h))}return r};   // bows lying back, so the top leans rearward
+    const o=fold(-1.02,.36),n=fold(-.72,.3);c.fillStyle=wash(v.hood,.8);c.beginPath();c.moveTo(o[0][0],o[0][1]);for(const q of o)c.lineTo(q[0],q[1]);for(let i=n.length-1;i>=0;i--)c.lineTo(n[i][0],n[i][1]);c.closePath();c.fill();
+    for(const sd of[0,10]){c.beginPath();c.moveTo(o[sd][0],o[sd][1]);c.lineTo(n[sd][0],n[sd][1]);c.stroke()}
+    c.beginPath();for(const [a,h] of[[-1.02,.36],[-.92,.34],[-.82,.32],[-.72,.3]]){const r=fold(a,h);c.moveTo(r[0][0],r[0][1]);for(const q of r)c.lineTo(q[0],q[1])}pencil(c,INK,.7,lod>1?.8:.7);c.stroke();
+    c.beginPath();c.moveTo(n[0][0],n[0][1]);for(const q of n)c.lineTo(q[0],q[1]);c.strokeStyle=v.art[2];c.lineWidth=2/S;c.stroke();pencil(c,INK,.8,.9)}
+  else{c.globalAlpha=1;const arc=(a)=>{const r=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;r.push(pt(a,Math.cos(t)*.56,1.38+Math.sin(t)*.62))}return r};
     const back=arc(-.88),front=arc(-.12);c.fillStyle=wash(v.hood,.8);c.beginPath();c.moveTo(back[0][0],back[0][1]);for(const q of back)c.lineTo(q[0],q[1]);for(let i=front.length-1;i>=0;i--)c.lineTo(front[i][0],front[i][1]);c.closePath();c.fill();
     c.beginPath();c.moveTo(front[0][0],front[0][1]);for(const q of front)c.lineTo(q[0],q[1]);c.strokeStyle=v.art[2];c.lineWidth=2/S;c.stroke();
     c.beginPath();c.moveTo(back[0][0],back[0][1]);for(const q of back)c.lineTo(q[0],q[1]);pencil(c,INK,.8,.9);c.stroke();

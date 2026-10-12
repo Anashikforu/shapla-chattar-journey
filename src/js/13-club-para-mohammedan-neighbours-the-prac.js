@@ -46,11 +46,11 @@ function drawBall(c){const p=[ball.x,ball.y];c.fillStyle='#fbf8ef';c.globalAlpha
 
 function genBuildings(){
   for(const L of LANDMARKS){let q=null;for(let k=0;k<40;k++){const t=lmQuad(L.r+k*3,L.deg+(k%2?1:-1)*(k>>1)*.8,L.f,L.d);if(quadFree(t)){q=t;break}}if(!q)continue;occMark(q);addBuilding(L.parts(q),{name:L.name,landmark:true,mosque:L.mosque,spire:L.spire})}
-  genClubs();genBaitul();genKamalapur();genNDC();genSchools();genDSE();genGreen();
+  genClubs();genBaitul();genKamalapur();genNDC();genSchools();genDSE();genGreen();genGalis();
   const mkB=(q,r0,kindHint)=>{
     let kind,h,col;const nearArm=kindHint==='arm';
     if(nearArm&&r0<340&&RND()<.36*(1-r0/420)+.08){kind=RND()<.45?'glass':'tower';h=rr(42,92)}
-    else if(kindHint==='lane'||kindHint==='infill'){kind='old';h=rr(9,26)}
+    else if(kindHint==='lane'||kindHint==='gali'||kindHint==='infill'){kind='old';h=rr(9,26)}
     else if(RND()<.45){kind='office';h=rr(16,40)}else{kind='old';h=rr(12,30)}
     if(RND()<.07&&kind!=='old'){kind='frame';h=rr(30,70)}
     if(r0>360)h*=.8;
@@ -62,13 +62,13 @@ function genBuildings(){
   for(const R of roads){const off0=R.hw+R.sw;for(const side of[-1,1]){let s=rr(0,5);
     while(s<R.len-4){const r=polyAt(R.P,s),x=r.x,y=r.y,tx=r.tx,ty=r.ty;if(!inWorld(x,y,-5)){s+=6;continue}
       const nx=ty*side,ny=-tx*side,r0=Math.hypot(x,y);
-      const f=R.kind==='arm'&&r0<260?rr(12,30):R.kind==='lane'?rr(6,12):rr(7,20),d=R.kind==='lane'?rr(8,14):rr(12,28),off=off0+rr(.25,1.4);
+      const nar=R.kind==='lane'||R.kind==='gali',f=R.kind==='arm'&&r0<260?rr(12,30):nar?rr(5,11):rr(7,20),d=nar?rr(7,13):rr(12,28),off=off0+(nar?rr(.1,.5):rr(.25,1.4));
       const q0=[x+nx*off,y+ny*off];let q=[q0,[q0[0]+tx*f,q0[1]+ty*f],[q0[0]+tx*f+nx*d,q0[1]+ty*f+ny*d],[q0[0]+nx*d,q0[1]+ny*d]];
       if(side<0)q=[q[1],q[0],q[3],q[2]];
       if(quadFree(q)){occMark(q);mkB(q,r0,R.kind);s+=f+rr(0,.9)}else s+=2.5}}}
   // infill behind the frontage
   const angAt=(x,y)=>{let best=0,bd=1e9;for(const R of roads){const[s,d]=nearestS(R.P,x,y);if(d<bd){bd=d;const r=polyAt(R.P,s);best=Math.atan2(r.ty,r.tx)}}return best};
-  for(let n=0;n<2600;n++){const x=rr(-E+5,E-5),y=rr(-E+5,E-5);if(cellAt(x,y)!==0)continue;const a=angAt(x,y),tx=Math.cos(a),ty=Math.sin(a),nx=ty,ny=-tx,f=rr(8,20),d=rr(8,18);
+  for(let n=0;n<7000;n++){const x=rr(-E+5,E-5),y=rr(-E+5,E-5);if(cellAt(x,y)!==0)continue;const a=angAt(x,y),tx=Math.cos(a),ty=Math.sin(a),nx=ty,ny=-tx,big=n<2600,f=big?rr(8,20):rr(5,11),d=big?rr(8,18):rr(5,10);   // Motijheel is packed: after the bigger blocks, small old buildings fill every gap
     const q0=[x-tx*f/2-nx*d/2,y-ty*f/2-ny*d/2],q=[q0,[q0[0]+tx*f,q0[1]+ty*f],[q0[0]+tx*f+nx*d,q0[1]+ty*f+ny*d],[q0[0]+nx*d,q0[1]+ny*d]];
     if(quadFree(q)){occMark(q);mkB(q,Math.hypot(x,y),'infill')}}
 }
@@ -79,6 +79,9 @@ function drawWindows(c,p){
   if(p.kind==='old'){c.beginPath();for(let i=0;i<p.win.length;i++)if(p.winCol[i])ppath(c,p.win[i]);c.fillStyle='rgba(63,122,90,.35)';c.fill()}
   c.beginPath();for(const q of p.win)ppath(c,q);pencil(c,INK,p.kind==='glass'?.22:.38,.7);c.stroke();
 }
+/* while the city is turning and seen from far off: shaded blocks and outlines only (the full drawing returns when it stops) */
+function drawPartFast(c,p){const col=p.col||'#c9c3b5';c.globalAlpha=1;c.fillStyle=p.kind==='glass'?wash('#9cc0d4',.7):wash(shade(col,.82),.55);if(p.roof)fillPoly(c,p.roof);
+  if(p.faces)for(const f of p.faces){c.fillStyle=wash(shade(col,.62+.38*f.lit),.6+.2*(1-f.lit));fillPoly(c,f.poly)}if(p.hull){c.beginPath();ppath(c,p.hull);pencil(c,INK,.5,.8);c.stroke();c.globalAlpha=1}}
 function drawPart(c,p,b){
   const col=p.col,k=p.kind;J=mulberry32(p.seed);c.globalAlpha=1;const top=p.top;
   if(k==='frame'){c.globalAlpha=1;c.fillStyle=wash('#b9b4aa',.5);fillPoly(c,p.roof);c.beginPath();for(const f of p.faces){for(let v=0;v<=p.top;v+=3.6){const a=FPt(f,0,v),q=FPt(f,f.len,v);c.moveTo(a[0],a[1]);c.lineTo(q[0],q[1])}for(let u=0;u<=f.len;u+=Math.max(4,f.len/5)){const a=FPt(f,u,0),q=FPt(f,u,p.top);c.moveTo(a[0],a[1]);c.lineTo(q[0],q[1])}}pencil(c,INK,.75,1.2);c.stroke();

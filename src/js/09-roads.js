@@ -24,6 +24,19 @@ function addRoad(ctrl,hw,sw,kind,extra){const pts=smoothPts(ctrl,5);const P=mkPo
   if(sw>0){R.edgeL=pathOf(offsetPts(pts,hw+sw));R.edgeR=pathOf(offsetPts(pts,-hw-sw))}
   const cp=pts.filter(p=>Math.hypot(p[0],p[1])>50);if(cp.length>1)R.center=pathOf(cp);
   roads.push(R);return R}
+/* galis: narrow lanes that wind off the roads between the buildings, for people on foot. They start at a road's footpath and stop
+   at another road, a footpath, a reserved plot (station, mosque, schools) or another gali. Called after the big plots are reserved. */
+function genGalis(){const cand=[];
+  for(const R of roads){if(R.kind==='lane'||R.kind==='gali')continue;for(let s=24;s<R.len-24;s+=rr(38,70))cand.push([R,s])}
+  for(const[R,s]of cand){if(RND()<.3)continue;const r=polyAt(R.P,s);if(Math.hypot(r.x,r.y)<75)continue;
+    for(const side of[-1,1]){if(RND()<.35)continue;let a=Math.atan2(-r.tx*side,r.ty*side),a0=a;const off=R.hw+R.sw+.6;let p=[r.x+r.ty*side*off,r.y-r.tx*side*off];if(!inWorld(p[0],p[1],-10))continue;
+      const pts=[p];let ok=false;
+      for(let st=0;st<36;st++){a+=rr(-.28,.28);a=a0+clamp(a-a0,-.7,.7);p=[p[0]+Math.cos(a)*5,p[1]+Math.sin(a)*5];if(!inWorld(p[0],p[1],-8))break;
+        const k=mk(p[0],p[1]);if(k<0||occ[k])break;pts.push(p);
+        if(st>3&&mask[k]>=1){ok=true;break}}   // reached another road or footpath (or a gali stamped earlier)
+      if(pts.length<6&&!ok)continue;
+      for(let i=0;i<pts.length-1;i++)stamp(pts[i][0],pts[i][1],pts[i+1][0],pts[i+1][1],1.5,1);
+      addRoad(pts,1.4,0,'gali')}}}
 function genRoads(){
   ARM_DEFS.forEach((a,i)=>{const R=addRoad(a.deg.map((d,k)=>polar(a.r[k],d)),a.hw,a.sw,'arm',{def:a,arm:i,name:a.name,phase:a.phase});ARMS.push(R)});
   for(const s of SIDE_DEFS)addRoad(s.c,s.hw,s.sw,'side');

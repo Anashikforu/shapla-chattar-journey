@@ -16,7 +16,7 @@ function boot(){
     if(!PAUSED&&!INSIDE){acc+=dt;let n=0;while(acc>=1/30&&n<3){step(1/30);acc-=1/30;n++}if(n===3)acc=0}
     if(cam.follow){const f=cam.follow;cam.tx=(f.fixed?f.x:f.dx)+KX;cam.ty=(f.fixed?f.y:f.dy)-KZ}
     cam.tx=clamp(cam.tx,-E-40,E+40);cam.ty=clamp(cam.ty,-E-120,E+40);const k=1-Math.pow(.0015,dt);cam.zoom+=(cam.tz-cam.zoom)*k;cam.x+=(cam.tx-cam.x)*k;cam.y+=(cam.ty-cam.y)*k;
-    if(INSIDE)drawRoom(dt);else render();uiT-=dt;if(uiT<=0){uiT=.4;updateClock();updateCard();updateStatusUI()}miniT-=dt;if(!INSIDE&&miniT<=0&&getComputedStyle(mini).display!=='none'){miniT=.2;drawMini()}if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').hidden=true}
+    if(INSIDE)(PANO_ON?drawPanorama(dt):drawRoom(dt));else{rotTick(dt);render()}uiT-=dt;if(uiT<=0){uiT=.4;updateClock();updateCard();updateStatusUI()}miniT-=dt;if(!INSIDE&&miniT<=0&&getComputedStyle(mini).display!=='none'){miniT=.2;drawMini()}if(toastT>0){toastT-=dt;if(toastT<=0)$('toast').hidden=true}
     requestAnimationFrame(frame)}
   requestAnimationFrame(frame);
 }
