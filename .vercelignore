@@ -1,0 +1,9 @@
+# the site is index.html plus the voices it loads; the rest is development material
+tests/
+tools/
+docs/
+node_modules/
+voices/*.wav
+generate_voices.py
+VOICE_PROMPTS.md
+__pycache__/
